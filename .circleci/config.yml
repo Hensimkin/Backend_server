@@ -17,8 +17,7 @@ jobs:
           command: npm install
       - run:
           name: run tests
-          command: npm run start
-          timeout: 1m
+          command: npm run test
       - run:
           name: Run linter
           command: npm run lint
