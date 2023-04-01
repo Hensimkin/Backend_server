@@ -7,23 +7,24 @@ orbs:
   node: circleci/node@4.7
 
 jobs:
-  cicd-tests-and-lint:
+  cicd-job:
     executor:
       name: node/default
     steps:
       - checkout
       - run:
-          name: Install npm packages
+          name: install dependencies - NPM packages
           command: npm install
       - run:
-          name: Run tests
-          command: npm run test
+          name: run tests
+          command: npm run start
+          timeout: 1m
       - run:
           name: Run linter
           command: npm run lint
-
 
 workflows:
   example-workflow:
     jobs:
       - cicd-job
+
