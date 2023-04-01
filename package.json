@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
+    "stop": "curl -X GET http://localhost:3000/shutdown",
     "lint": "eslint src/* --color",
     "test": "mocha tests/*.spec.js --color"
   },
