@@ -1,10 +1,15 @@
-const express = require('express');
-const app = express();
+import express from 'express';
+import bodyParser from 'body-parser';
 
-app.get('/api', (req, res) => {
-    res.send('Hello from the backend server!');
+const port = process.env.PORT || 3000;
+const app = express();
+app.use(bodyParser.urlencoded({ extended: false }));
+
+app.get('/', (req, res) => {
+    console.log('A new request');
+    res.send('Hello from server main page');
 });
 
-app.listen(3000, () => {
-    console.log('Server listening on port 3000');
+app.listen(port, () => {
+    console.log(`Server is running on port: ${port}`);
 });
