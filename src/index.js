@@ -53,23 +53,37 @@ app.post('/post_phoneNumber', async (req, res) => {
     if (phoneNumber.length !== 10)
         res.send('Phone number must be at 10 characters long');
 
-
+    console.log(phoneNumber)
 });
 
-// app.post('/post_birthdate', async (req, res) => {
-//     const today = new Date();
-//     let {birthDate} = req.body;
-//     let age = today.getFullYear() - birthDate.getFullYear();
-//     const monthDifference = today.getMonth() - birthDate.getMonth();
-//     if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
-//         age--;
-//     }
-//     if (age < 13) {
-//         res.send('You must be at least 13 years old to register.');
-//
-//     }
-//
-// });
+app.post('/post_phone_number', (req, res) => {
+    const { phoneNumber } = req.body;
+    const parsedPhoneNumber = phoneUtil.parse(phoneNumber);
+    if (!parsedPhoneNumber.getCountryCode()) {
+        res.status(400).send('Please enter a phone number with a country code.');
+        return;
+    }
+    const formattedPhoneNumber = phoneUtil.format(parsedPhoneNumber, PhoneNumberFormat.INTERNATIONAL);
+    res.send(`Your phone number is ${formattedPhoneNumber}.`);
+});
+
+
+app.post('/post_birthdate', async (req, res) => {
+    const today = new Date();
+    const selectedDate = Object.keys(req.body)[0];
+    console.log(selectedDate);
+    const birthDate = new Date(selectedDate);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDifference = today.getMonth() - birthDate.getMonth();
+    if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    if (age < 13) {
+        res.send('You must be at least 13 years old.');
+
+    }
+
+});
 
 app.listen(port, () => {
     console.log(`Server is running on port: ${port}`);
