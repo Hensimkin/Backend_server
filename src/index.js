@@ -1,6 +1,7 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
+import multer from 'multer';
 
 const port = process.env.PORT || 5000;
 const app = express();
@@ -104,7 +105,56 @@ app.post('/post_approve', async (req, res) => {
 
 });
 
+app.post('/post_title', async (req, res) => {
+    let { title } = req.body;
+    console.log(title);
+    res.send('title received'); // Add this line to send a response back to the client
+});
 
+app.post('/post_price', async (req, res) => {
+    let { price } = req.body;
+    console.log(price);
+    res.send('price received'); // Add this line to send a response back to the client
+});
+
+app.post('/post_category', async (req, res) => {
+    let { category } = req.body;
+    console.log(category);
+    res.send('category received'); // Add this line to send a response back to the client
+});
+
+app.post('/post_description', async (req, res) => {
+    let { description } = req.body;
+    console.log(description);
+    res.send('title received'); // Add this line to send a response back to the client
+});
+
+
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        // Specify the directory where you want to save the uploaded pictures
+        cb(null, 'uploads/');
+    },
+    filename: function (req, file, cb) {
+        // Generate a unique filename for each uploaded picture
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        cb(null, file.fieldname + '-' + uniqueSuffix);
+    }
+});
+
+
+
+const upload = multer({ storage: storage });
+
+app.post('/post_pictures', upload.array('pictures'), async (req, res) => {
+    // The uploaded pictures are available in req.files array
+    console.log("picture");
+    console.log(req.files);
+
+    // You can process the uploaded pictures here
+
+    res.send('Pictures received'); // Send a response back to the client
+});
 app.listen(port, () => {
     console.log(`Server is running on port: ${port}`);
 });
