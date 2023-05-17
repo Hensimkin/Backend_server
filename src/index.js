@@ -9,7 +9,8 @@ import { getFirestore } from "firebase/firestore";
 import { firebaseConfig } from './config/firebase-config.js';
 // for write methods
 import { collection, addDoc } from "firebase/firestore";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword , sendEmailVerification} from "firebase/auth";
+
 
 import { getDocs } from "firebase/firestore";
 
@@ -120,10 +121,19 @@ app.post('/post_approve', async (req, res) => {
             mail: mail,
             password: pass,
         };
-
         try {
             const docRef = await createUserWithEmailAndPassword(auth, user.mail, user.password);
-            console.log("Document written with ID: ", docRef);
+            // console.log("Document written with ID: ", docRef);
+            const userObj = docRef.user;
+            try {
+                console.log('sending mail');
+                await sendEmailVerification(userObj);
+                console.log("Email verification sent");
+                // Handle success
+            } catch (error) {
+                console.error("Error sending email verification:", error);
+                // Handle error
+            }
         } catch (e) {
             console.error("Error adding document: ", e);
         }
