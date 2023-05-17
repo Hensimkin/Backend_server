@@ -21,21 +21,14 @@
   },
   "homepage": "https://github.com/Hensimkin/Backend_server#readme",
   "dependencies": {
-    "@firebase/auth": "^0.23.2",
     "@types/chai": "^4.3.4",
     "@types/mocha": "^10.0.1",
     "body-parser": "^1.20.2",
     "chai": "^4.3.7",
-    "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
-    "csurf": "^1.11.0",
-    "ejs": "^3.1.9",
     "express": "^4.18.2",
-    "firebase": "^9.22.0",
-    "firebase-admin": "^11.8.0",
     "mocha": "^10.2.0",
-    "moment": "^2.29.4",
-    "nodemon": "^2.0.22"
+    "moment": "^2.29.4"
   },
   "devDependencies": {
     "eslint": "^8.37.0",
