@@ -6,7 +6,7 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { firebaseConfig } from './config/firebase-config.js';
 import { collection, addDoc, getDocs } from "firebase/firestore";
-import { createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword,fetchSignInMethodsForEmail,sendEmailVerification } from 'firebase/auth'
+import { createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword,fetchSignInMethodsForEmail,sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth'
 import multer from 'multer';
 
 // Set up the server
@@ -136,7 +136,42 @@ app.post('/post_email', async (req, res) => {
 
 
 
+app.post('/post_reset', async (req, res) => {
+    const { email } = req.body;
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    auth = getAuth();
+    if (!emailPattern.test(email)) {
+        res.send('Please enter a valid email');
+    }
+    else
+    {
+        try {
+            const isEmailInUse = await checkEmailInUse(email);
 
+            if (isEmailInUse) {
+                sendPasswordResetEmail(auth, email)
+                    .then(() => {
+                        // Password reset email sent successfully
+                        console.log("Password reset email sent");
+                        res.send('Password reset email sent');
+                    })
+                    .catch(function(error) {
+                        // An error occurred while sending the password reset email
+                        console.error(error);
+                    });
+            }
+            else
+            {
+                res.send('Invalid details');
+
+            }
+        } catch (error) {
+            console.error('Error checking email:', error);
+            res.status(500).send('An error occurred while checking the email');
+        }
+    }
+    console.log(email);
+});
 
 
 
