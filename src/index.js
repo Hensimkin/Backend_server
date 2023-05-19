@@ -53,6 +53,7 @@ let passwordValid = false;
 let date = null;
 let mail = null;
 let pass = null;
+let phone = null;
 
 // Firebase authentication instance
 let auth = getAuth();
@@ -202,6 +203,16 @@ app.post('/post_password', async (req, res) => {
     console.log(password);
 });
 
+app.post('/post_phoneNumber', async (req, res) => {
+    const phoneNumber = Object.keys(req.body)[0]; // Get the first property name from req.body as the phone number
+    console.log(phoneNumber); // Print the phone number
+    phone = phoneNumber;
+    res.send('Phone number received successfully.'); // Send a response to the client
+});
+
+
+
+
 /**
  * Receive and validate a birthdate.
  * Expects request body to contain a single key-value pair with the selected date.
@@ -272,7 +283,7 @@ app.post('/post_approve', async (req, res) => {
     }
     else {
 
-        console.log('Not valid');
+        console.log('Not valid signup');
         res.send('no');
     }
 });
