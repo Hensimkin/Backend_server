@@ -54,6 +54,7 @@ let date = null;
 let mail = null;
 let pass = null;
 let phone = null;
+let storedData={};
 
 // Firebase authentication instance
 let auth = getAuth();
@@ -295,9 +296,11 @@ app.post('/post_approve', async (req, res) => {
  * It sends a response with 'title received'.
  */
 app.post('/post_title', async (req, res) => {
-    let { title } = req.body;
+    const { title } = req.body;
     console.log(title);
-    res.send('title received');
+    storedData.title = title;
+    console.log(storedData);
+    res.send('title received'); // Add this line to send a response back to the client
 });
 
 /**
@@ -307,9 +310,11 @@ app.post('/post_title', async (req, res) => {
  * It sends a response with 'price received'.
  */
 app.post('/post_price', async (req, res) => {
-    let { price } = req.body;
+    const { price } = req.body;
     console.log(price);
-    res.send('price received');
+    storedData.price = price;
+    console.log(storedData);
+    res.send('price received'); // Add this line to send a response back to the client
 });
 
 /**
@@ -319,9 +324,11 @@ app.post('/post_price', async (req, res) => {
  * It sends a response with 'category received'.
  */
 app.post('/post_category', async (req, res) => {
-    let { category } = req.body;
+    const { category } = req.body;
     console.log(category);
-    res.send('category received');
+    storedData.category = category;
+    console.log(storedData);
+    res.send('category received'); // Add this line to send a response back to the client
 });
 
 /**
@@ -331,9 +338,11 @@ app.post('/post_category', async (req, res) => {
  * It sends a response with 'description received'.
  */
 app.post('/post_description', async (req, res) => {
-    let { description } = req.body;
+    const { description } = req.body;
     console.log(description);
-    res.send('description received');
+    storedData.description = description;
+    console.log(storedData);
+    res.send('title received'); // Add this line to send a response back to the client
 });
 
 /**
@@ -344,12 +353,18 @@ app.post('/post_description', async (req, res) => {
  */
 app.post('/post_pictures', upload.array('pictures'), async (req, res) => {
     // The uploaded pictures are available in req.files array
-    console.log("picture");
     console.log(req.files);
-
+    console.log("pictures");
+    storedData.pictures = req.files.map(file => file.filename);
+    console.log(storedData);
+    console.log(storage);
     // You can process the uploaded pictures here
 
     res.send('Pictures received');
+});
+
+app.get('/get_stored_data', (req, res) => {
+    res.json(storedData);
 });
 
 // Start the server
