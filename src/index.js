@@ -9,6 +9,7 @@ import { collection, addDoc, getDocs } from "firebase/firestore";
 import { createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword,fetchSignInMethodsForEmail,sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth'
 import multer from 'multer';
 
+
 // Set up the server
 const port = process.env.PORT || 5000;
 const app = express();
@@ -354,18 +355,33 @@ app.post('/post_description', async (req, res) => {
 app.post('/post_pictures', upload.array('pictures'), async (req, res) => {
     // The uploaded pictures are available in req.files array
     console.log(req.files);
-    console.log("pictures");
     storedData.pictures = req.files.map(file => file.filename);
     console.log(storedData);
     console.log(storage);
-    // You can process the uploaded pictures here
-
     res.send('Pictures received');
 });
 
 app.get('/get_stored_data', (req, res) => {
     res.json(storedData);
 });
+
+
+app.post('/post_all', async (req, res) => {
+    const { title, price, category, description } = req.body;
+    //const pictures = req.files.map(file => file.filename);
+
+    storedData.title = title;
+    storedData.price = price;
+    storedData.category = category;
+    storedData.description = description;
+    //storedData.pictures = pictures;
+    console.log(storedData);
+    res.send('Data received');
+});
+
+
+
+
 
 // Start the server
 app.listen(port, () => {
