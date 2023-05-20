@@ -3,7 +3,7 @@ import bodyParser from 'body-parser';
 import cors from 'cors';
 import * as serviceAccount from './config/server-firebase-keys.json' assert { type: 'json' };
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 import { firebaseConfig } from './config/firebase-config.js';
 import { collection, addDoc, getDocs } from "firebase/firestore";
 import { createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword,fetchSignInMethodsForEmail,sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth'
@@ -18,6 +18,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
 // Initialize Firebase
+
 const firestore_app = initializeApp(firebaseConfig);
 const db = getFirestore(firestore_app);
 
@@ -376,13 +377,28 @@ app.post('/post_all', async (req, res) => {
     storedData.description = description;
     //storedData.pictures = pictures;
     console.log(storedData);
+    await setDoc(doc(db, 'products', 'listed-items' ), {
+        title: title,
+        price: price,
+        category: category,
+        description: description,
+    });
+    console.log(db.toJSON());
     res.send('Data received');
 });
 
 
 
 
+const docRef = doc(db, "products", "listed-items");
+const docSnap = await getDoc(docRef);
 
+if (docSnap.exists()) {
+    console.log("Document data:", docSnap.data());
+} else {
+    // docSnap.data() will be undefined in this case
+    console.log("No such document!");
+}
 // Start the server
 app.listen(port, () => {
     console.log(`Server is running on port: ${port}`);
