@@ -52,6 +52,7 @@ const upload = multer({ storage: storage });
 let dateValid = false;
 let emailValid = false;
 let passwordValid = false;
+let fullName = null;
 let date = null;
 let mail = null;
 let pass = null;
@@ -250,6 +251,8 @@ app.post('/post_birthdate', async (req, res) => {
  */
 app.post('/post_approve', async (req, res) => {
     if (passwordValid && emailValid && dateValid) {
+        fullName = Object.keys(req.body)[0];
+        console.log(fullName);
         const user = {
             mail: mail,
             password: pass,
