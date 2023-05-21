@@ -59,9 +59,6 @@ let pass = null;
 let phone = null;
 let storedData={};
 
-// Profile
-
-
 // Firebase authentication instance
 let auth = getAuth();
 
@@ -406,6 +403,11 @@ app.post('/edit_phone_number', async (req, res) => {
     res.send("Phone number changed");
 });
 
+app.post('/unfollow', async (req, res) => {
+    const {unfollowedUser} = req.body;
+    console.log(unfollowedUser);
+    res.send("Following removed");
+});
 
 const docRef = doc(db, "products", "listed-items");
 const docSnap = await getDoc(docRef);
