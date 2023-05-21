@@ -3,9 +3,9 @@ import bodyParser from 'body-parser';
 import cors from 'cors';
 import * as serviceAccount from './config/server-firebase-keys.json' assert { type: 'json' };
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, getDocsFromCache, query, getDoc} from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 import { firebaseConfig } from './config/firebase-config.js';
-import { collection, addDoc, getDocs, where, updateDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs } from "firebase/firestore";
 import { createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword,fetchSignInMethodsForEmail,sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth'
 import multer from 'multer';
 
@@ -56,7 +56,6 @@ let date = null;
 let mail = null;
 let pass = null;
 let phone = null;
-let name = null;
 let storedData={};
 
 // Profile
@@ -271,16 +270,6 @@ app.post('/post_approve', async (req, res) => {
                 console.error("Error sending email verification:", error);
             }
 
-
-            await addDoc(collection(db, 'users'), {
-                phone: phone,
-                name: 'user-full-name',
-                mail: mail,
-                password: pass,
-                date: date
-
-            }, { merge: true }, { capital: true });
-
             console.log('Transfer to Home Page');
             res.send('yes');
         }
@@ -391,12 +380,12 @@ app.post('/post_all', async (req, res) => {
     storedData.description = description;
     //storedData.pictures = pictures;
     console.log(storedData);
-    await addDoc(collection(db, 'products'), {
+    await setDoc(doc(db, 'products', 'listed-items' ), {
         title: title,
         price: price,
         category: category,
         description: description,
-    }, { merge: true }, { capital: true });
+    });
     console.log(db.toJSON());
     res.send('Data received');
 });
@@ -408,38 +397,16 @@ app.post('/edit_name', async (req, res) => {
     res.send("Name changed");
 });
 
-// Load Data from Firestore
 
-try {
-    const querySnapshot = await getDocs(collection(db, 'products'));
-    const products = [];
-    querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        products.push(data);
-    });
-    console.log(products);
-} catch (error) {
-    console.error('Error loading data:', error);
+const docRef = doc(db, "products", "listed-items");
+const docSnap = await getDoc(docRef);
+
+if (docSnap.exists()) {
+    console.log("Document data:", docSnap.data());
+} else {
+    // docSnap.data() will be undefined in this case
+    console.log("No such document!");
 }
-
-
-
-
-
-
-// const ref = doc(db, "products", "listed-items").withConverter(productsConverter);
-// const docSnap = await getDoc(ref);
-// if (docSnap.exists()) {
-//     // Convert to City object
-//     const product = docSnap.data();
-//     // Use a City instance method
-//     console.log(product.toString());
-// } else {
-//     console.log("No such document!");
-// }
-
-
-
 // Start the server
 app.listen(port, () => {
     console.log(`Server is running on port: ${port}`);
