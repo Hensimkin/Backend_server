@@ -58,6 +58,9 @@ let pass = null;
 let phone = null;
 let storedData={};
 
+// Profile
+
+
 // Firebase authentication instance
 let auth = getAuth();
 
@@ -387,7 +390,12 @@ app.post('/post_all', async (req, res) => {
     res.send('Data received');
 });
 
-
+// Profile
+app.post('/edit_name', async (req, res) => {
+    const {FullName} = req.body;
+    console.log(FullName);
+    res.send("Name changed");
+});
 
 
 const docRef = doc(db, "products", "listed-items");
