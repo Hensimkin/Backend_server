@@ -52,14 +52,12 @@ const upload = multer({ storage: storage });
 let dateValid = false;
 let emailValid = false;
 let passwordValid = false;
+let fullName = null;
 let date = null;
 let mail = null;
 let pass = null;
 let phone = null;
 let storedData={};
-
-// Profile
-
 
 // Firebase authentication instance
 let auth = getAuth();
@@ -253,6 +251,8 @@ app.post('/post_birthdate', async (req, res) => {
  */
 app.post('/post_approve', async (req, res) => {
     if (passwordValid && emailValid && dateValid) {
+        fullName = Object.keys(req.body)[0];
+        console.log(fullName);
         const user = {
             mail: mail,
             password: pass,
@@ -269,6 +269,15 @@ app.post('/post_approve', async (req, res) => {
             catch (error) {
                 console.error("Error sending email verification:", error);
             }
+            await addDoc(collection(db, 'users'), {
+                name: fullName,
+                mail: mail,
+                phone: phone,
+                password: pass,
+                birthdate: date,
+            });
+
+
 
             console.log('Transfer to Home Page');
             res.send('yes');
@@ -380,7 +389,7 @@ app.post('/post_all', async (req, res) => {
     storedData.description = description;
     //storedData.pictures = pictures;
     console.log(storedData);
-    await setDoc(doc(db, 'products', 'listed-items' ), {
+    await addDoc(collection(db, 'products'), {
         title: title,
         price: price,
         category: category,
@@ -397,6 +406,17 @@ app.post('/edit_name', async (req, res) => {
     res.send("Name changed");
 });
 
+app.post('/edit_phone_number', async (req, res) => {
+    const {PhoneNumber} = req.body;
+    console.log(PhoneNumber);
+    res.send("Phone number changed");
+});
+
+app.post('/unfollow', async (req, res) => {
+    const {unfollowedUser} = req.body;
+    console.log(unfollowedUser);
+    res.send("Following removed");
+});
 
 const docRef = doc(db, "products", "listed-items");
 const docSnap = await getDoc(docRef);
