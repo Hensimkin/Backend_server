@@ -400,6 +400,12 @@ app.post('/edit_name', async (req, res) => {
     res.send("Name changed");
 });
 
+app.post('/edit_phone_number', async (req, res) => {
+    const {PhoneNumber} = req.body;
+    console.log(PhoneNumber);
+    res.send("Phone number changed");
+});
+
 
 const docRef = doc(db, "products", "listed-items");
 const docSnap = await getDoc(docRef);
