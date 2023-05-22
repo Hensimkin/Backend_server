@@ -579,6 +579,7 @@ app.get('/user_listings', async (req, res) => {
 
 
 
+
 app.get('/home_listings', async (req, res) => {
     auth = getAuth();
     const userId = auth.currentUser.uid // Assuming you have middleware to authenticate the user and populate `req.user`
