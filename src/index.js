@@ -5,8 +5,9 @@ import * as serviceAccount from './config/server-firebase-keys.json' assert { ty
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 import { firebaseConfig } from './config/firebase-config.js';
-import { collection, addDoc, getDocs } from "firebase/firestore";
-import { createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword,fetchSignInMethodsForEmail,sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth'
+import { collection, addDoc, getDocs,where,query } from "firebase/firestore";
+import { createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword,
+    fetchSignInMethodsForEmail,sendEmailVerification, sendPasswordResetEmail, setPersistence, browserLocalPersistence  } from 'firebase/auth'
 import multer from 'multer';
 
 
@@ -84,6 +85,7 @@ app.post('/post_signin', async (req, res) => {
     auth = getAuth();
 
     try {
+        await setPersistence(auth, browserLocalPersistence);
         await signInWithEmailAndPassword(auth, email, password);
 
         if (!auth.currentUser.emailVerified) {
@@ -372,23 +374,34 @@ app.get('/get_stored_data', (req, res) => {
 
 app.post('/post_all', async (req, res) => {
     const { title, price, category, description } = req.body;
-    //const pictures = req.files.map(file => file.filename);
+    // const pictures = req.files.map(file => file.filename);
+    auth = getAuth();
 
-    storedData.title = title;
-    storedData.price = price;
-    storedData.category = category;
-    storedData.description = description;
-    //storedData.pictures = pictures;
-    console.log(storedData);
-    await setDoc(doc(db, 'products', 'listed-items' ), {
+
+    const listringData = {
         title: title,
         price: price,
         category: category,
         description: description,
-    });
-    console.log(db.toJSON());
-    res.send('Data received');
+        userid: auth.currentUser.uid // Associate the post with the user
+    };
+
+    try {
+        // Save the post data to Firestore
+        await addDoc(collection(db, 'listings'), listringData);
+        console.log('Post data saved:', listringData);
+
+        // You can also save the pictures to storage and associate them with the post if needed
+        // const pictureUrls = req.files.map(file => file.filename);
+        // Save the picture URLs to Firestore or storage and associate them with the post
+
+        res.send('Data received');
+    } catch (error) {
+        console.error('Error saving post data:', error);
+        res.status(500).send('An error occurred while saving the post data');
+    }
 });
+
 
 // Profile
 app.post('/edit_name', async (req, res) => {
@@ -418,6 +431,34 @@ if (docSnap.exists()) {
     // docSnap.data() will be undefined in this case
     console.log("No such document!");
 }
+
+app.post('/signOut', async (req, res) => {
+    const auth = getAuth();
+
+    try {
+        await auth.signOut();
+        res.status(200).send('User signed out successfully');
+    } catch (error) {
+        console.error('Error signing out user:', error);
+        res.status(500).send('An error occurred while signing out');
+    }
+});
+app.get('/user_listings', async (req, res) => {
+    auth = getAuth();
+    const userId = auth.currentUser.uid // Assuming you have middleware to authenticate the user and populate `req.user`
+
+    try {
+        const querySnapshot = await getDocs(query(collection(db, 'listings'), where('userid', '==', userId)));
+        const listings = querySnapshot.docs.map((doc) => doc.data());
+
+        res.json(listings);
+    } catch (error) {
+        console.error('Error retrieving user listings:', error);
+        res.status(500).send('An error occurred while retrieving user listings');
+    }
+});
+
+
 // Start the server
 app.listen(port, () => {
     console.log(`Server is running on port: ${port}`);
