@@ -282,8 +282,9 @@ app.post('/post_approve', async (req, res) => {
             res.send('yes');
             try {
                 // Save the post data to Firestore
-                await addDoc(collection(db, 'users'), adduser);
-                console.log('Post data saved:', adduser);
+                const newUser = { ...adduser, uid: userObj.uid };
+                await addDoc(collection(db, 'users'), newUser);
+                console.log('Post data saved:', newUser);
             }
             catch(error)
             {
@@ -452,6 +453,25 @@ app.get('/user_listings', async (req, res) => {
 
     try {
         const querySnapshot = await getDocs(query(collection(db, 'listings'), where('userid', '==', userId)));
+        const listings = querySnapshot.docs.map((doc) => doc.data());
+
+        res.json(listings);
+    } catch (error) {
+        console.error('Error retrieving user listings:', error);
+        res.status(500).send('An error occurred while retrieving user listings');
+    }
+});
+
+
+
+
+
+app.get('/home_listings', async (req, res) => {
+    auth = getAuth();
+    const userId = auth.currentUser.uid // Assuming you have middleware to authenticate the user and populate `req.user`
+
+    try {
+        const querySnapshot = await getDocs(query(collection(db, 'listings'), where('userid', '!=', userId)));
         const listings = querySnapshot.docs.map((doc) => doc.data());
 
         res.json(listings);
