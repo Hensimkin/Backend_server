@@ -3,9 +3,8 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs,where,query } from "firebase/firestore";
 import { firebaseConfig } from './config/firebase-config.js';
-import { collection, addDoc, getDocs,where,query } from "firebase/firestore";
 import { createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword,
     fetchSignInMethodsForEmail,sendEmailVerification, sendPasswordResetEmail, setPersistence, browserLocalPersistence  } from 'firebase/auth'
 import multer from 'multer';
@@ -255,10 +254,7 @@ app.post('/post_approve', async (req, res) => {
     if (passwordValid && emailValid && dateValid) {
         fullName = Object.keys(req.body)[0];
         console.log(fullName);
-        const user = {
-            mail: mail,
-            password: pass,
-        };
+
         const adduser = {
             mail: mail,
             password: pass,
@@ -445,11 +441,114 @@ app.post('/edit_phone_number', async (req, res) => {
     res.send("Phone number changed");
 });
 
+
+class User {
+    constructor (name, mail, phone ) {
+        this.name = name;
+        this.mail = mail;
+        this.phone = phone;
+    }
+    toString() {
+        return this.name + ', ' + this.mail + ', ' + this.phone;
+    }
+}
+
+// Firestore data converter
+const userConverter = {
+    toFirestore: (user) => {
+        return {
+            name: user.name,
+            mail: user.mail,
+            phone: user.phone
+        };
+    },
+    fromFirestore: (snapshot, options) => {
+        const data = snapshot.data(options);
+        return new User(data.name, data.mail, data.phone);
+    }
+};
+
+
+
+
+app.post('/edit_profile', async (req, res) => {
+    try {
+        const user = getDoc(collection(db, 'users'));
+        const userRef = User((await user).data.toString());
+        console.log(userRef);
+
+    }catch (e) {}
+
+});
+
 app.post('/unfollow', async (req, res) => {
     const {unfollowedUser} = req.body;
     console.log(unfollowedUser);
     res.send("Following removed");
 });
+
+
+
+
+class Follower {
+    constructor(uid1, uid2){
+        this.follower = uid1;
+        this.followed = uid2;
+    }
+    toString(){
+        return this.follower + ' Started Following '+ this.followed
+    }
+};
+app.post('/follow', async (req, res) => {
+    try{
+        const newFollow = new Follower(getAuth().currentUser.uid, req.body);
+        await addDoc(collection(db, 'followers'), newFollow);
+        console.log('Post data saved:', newFollow.toString());
+    }catch (e){}
+});
+
+
+// show the followers list
+app.post('/followers', async (req, res) => {
+    auth = getAuth();
+    const userId = auth.currentUser.uid // Assuming you have middleware to authenticate the user and populate `req.user`
+    try {
+        const querySnapshot = await getDocs(query(collection(db, 'followers'), where('follower-uid', '==', userId)));
+        const followers = querySnapshot.docs.map((doc) => doc.data());
+
+        res.json(followers);
+    } catch (error) {
+        console.error('Error retrieving followers:', error);
+        res.status(500).send('An error occurred while retrieving followers list');
+    }
+});
+
+// show the following list
+app.post('/following', async (req, res) => {
+    auth = getAuth();
+    const userId = auth.currentUser.uid // Assuming you have middleware to authenticate the user and populate `req.user`
+    try {
+        const querySnapshot = await getDocs(query(collection(db, 'followers'), where('followed-uid', '==', userId)));
+        const following = querySnapshot.docs.map((doc) => doc.data());
+
+        res.json(following);
+    } catch (error) {
+        console.error('Error retrieving following:', error);
+        res.status(500).send('An error occurred while retrieving following list');
+    }
+});
+
+
+
+
+
+
+
+
+
+
+
+
 app.post('/signOut', async (req, res) => {
     const auth = getAuth();
 
@@ -510,16 +609,16 @@ app.get('/user_details', async (req, res) => {
         res.status(500).send('An error occurred while retrieving user listings');
     }
 });
-
-const docRef = doc(db, "products", "listed-items");
-const docSnap = await getDoc(docRef);
-
-if (docSnap.exists()) {
-    console.log("Document data:", docSnap.data());
-} else {
-    // docSnap.data() will be undefined in this case
-    console.log("No such document!");
-}
+//
+// const docRef = doc(db, "products", "listed-items");
+// const docSnap = await getDoc(docRef);
+//
+// if (docSnap.exists()) {
+//     console.log("Document data:", docSnap.data());
+// } else {
+//     // docSnap.data() will be undefined in this case
+//     console.log("No such document!");
+// }
 // Start the server
 app.listen(port, () => {
     console.log(`Server is running on port: ${port}`);
