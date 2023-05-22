@@ -393,30 +393,44 @@ app.post('/post_all', async (req, res) => {
     // const pictures = req.files.map(file => file.filename);
     auth = getAuth();
 
-
-    const listringData = {
-        title: title,
-        price: price,
-        category: category,
-        description: description,
-        userid: auth.currentUser.uid // Associate the post with the user
-    };
+    const userId = auth.currentUser.uid;
 
     try {
-        // Save the post data to Firestore
-        await addDoc(collection(db, 'listings'), listringData);
-        console.log('Post data saved:', listringData);
+        // Retrieve the user document that matches the userId
+        const userQuery = query(collection(db, 'users'), where('uid', '==', userId));
+        const userSnapshot = await getDocs(userQuery);
 
-        // You can also save the pictures to storage and associate them with the post if needed
-        // const pictureUrls = req.files.map(file => file.filename);
-        // Save the picture URLs to Firestore or storage and associate them with the post
+        if (!userSnapshot.empty) {
+            const userData = userSnapshot.docs[0].data();
+            const phone = userData.phone;
 
-        res.send('Data received');
+            const listringData = {
+                title: title,
+                price: price,
+                category: category,
+                description: description,
+                userid: userId,
+                phone: phone // Add the 'phone' field to the listing data
+            };
+
+            // Save the post data to Firestore
+            await addDoc(collection(db, 'listings'), listringData);
+            console.log('Post data saved:', listringData);
+
+            // You can also save the pictures to storage and associate them with the post if needed
+            // const pictureUrls = req.files.map(file => file.filename);
+            // Save the picture URLs to Firestore or storage and associate them with the post
+
+            res.send('Data received');
+        } else {
+            res.status(404).send('User not found');
+        }
     } catch (error) {
         console.error('Error saving post data:', error);
         res.status(500).send('An error occurred while saving the post data');
     }
 });
+
 
 // Profile
 app.post('/edit_name', async (req, res) => {
