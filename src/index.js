@@ -259,6 +259,12 @@ app.post('/post_approve', async (req, res) => {
             mail: mail,
             password: pass,
         };
+        const adduser = {
+            mail: mail,
+            password: pass,
+            phone: phone,
+            name: fullName,
+        };
         try
         {
             const docRef = await createUserWithEmailAndPassword(auth, user.mail, user.password);
@@ -274,6 +280,15 @@ app.post('/post_approve', async (req, res) => {
 
             console.log('Transfer to Home Page');
             res.send('yes');
+            try {
+                // Save the post data to Firestore
+                await addDoc(collection(db, 'users'), adduser);
+                console.log('Post data saved:', adduser);
+            }
+            catch(error)
+            {
+                console.error("Error sending email verification:", error);
+            }
         }
 
         catch (e)
@@ -440,6 +455,22 @@ app.get('/user_listings', async (req, res) => {
         const listings = querySnapshot.docs.map((doc) => doc.data());
 
         res.json(listings);
+    } catch (error) {
+        console.error('Error retrieving user listings:', error);
+        res.status(500).send('An error occurred while retrieving user listings');
+    }
+});
+
+
+app.get('/user_details', async (req, res) => {
+    auth = getAuth();
+    const userMail = auth.currentUser.email // Assuming you have middleware to authenticate the user and populate `req.user`
+
+    try {
+        const querySnapshot = await getDocs(query(collection(db, 'users'), where('mail', '==', userMail)));
+        const users = querySnapshot.docs.map((doc) => doc.data());
+
+        res.json(users);
     } catch (error) {
         console.error('Error retrieving user listings:', error);
         res.status(500).send('An error occurred while retrieving user listings');
