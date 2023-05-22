@@ -2,7 +2,6 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
-import * as serviceAccount from './config/server-firebase-keys.json' assert { type: 'json' };
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 import { firebaseConfig } from './config/firebase-config.js';
