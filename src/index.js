@@ -255,6 +255,11 @@ app.post('/post_approve', async (req, res) => {
         fullName = Object.keys(req.body)[0];
         console.log(fullName);
 
+        const user = {
+            mail: mail,
+            password: pass
+        };
+
         const adduser = {
             mail: mail,
             password: pass,
