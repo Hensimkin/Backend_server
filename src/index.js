@@ -634,43 +634,65 @@ class Save{
 
 // showing the saved list for the user
 app.post('/saved', async (req, res) => {
-    auth = getAuth();
-    const userId = auth.currentUser.uid // Assuming you have middleware to authenticate the user and populate `req.user`
     try {
-        const querySnapshot = await getDocs(query(collection(db, 'saves'), where('uid', '==', userId)));
-        const saved = querySnapshot.docs.map((doc) => doc.data());
+        const authId = auth.currentUser.uid;
+        const userQuerySnapshot = await getDocs(query(collection(db, 'users'), where('uid', '==', authId)));
 
-        res.json(saved);
+        if (userQuerySnapshot.empty) {
+            console.error('User document not found');
+            res.sendStatus(404);
+            return;
+        }
+
+        const userDoc = userQuerySnapshot.docs[0];
+        const savedListings = userDoc.data().saved || [];
+
+        res.json(savedListings);
     } catch (error) {
-        console.error('Error retrieving saved:', error);
-        res.status(500).send('An error occurred while retrieving saved list');
+        console.error('Error retrieving saved listings:', error);
+        res.status(500).send('An error occurred while retrieving saved listings');
     }
 });
 
 
+
 app.post('/save', async (req, res) => {
-    // try{
-    //     const newSave = new Save(getAuth().currentUser.uid, req.body);
-    //     await addDoc(collection(db, 'saves'), newSave);
-    //     console.log('Post data saved:', newSave.toString());
-    //     //need to edit catch -> for different cases.
-    // }catch (e){console.log("Can't save this post", newSave.toString());}
     try {
         const { listing } = req.body;
-        console.log('Listing data:', listing);
-        // Assuming you have initialized Firebase and have access to the Firestore instance
-        const savesCollectionRef = collection(db, 'saves');
+        console.log('listing:', listing);
+        const authId = auth.currentUser.uid;
+        console.log('Authenticated User ID:', authId);
+        const userQuerySnapshot = await getDocs(query(collection(db, 'users'), where('uid', '==', authId)));
+        console.log('User ID the first:', userQuerySnapshot);
 
-        // Create a new document in the 'saves' collection with the listing data
-        const newSaveDocRef = await addDoc(savesCollectionRef, listing);
-        console.log('Listing saved with ID:', newSaveDocRef.id);
+        if (userQuerySnapshot.empty) {
+            console.error('User document not found');
+            res.sendStatus(404);
+            return;
+        }
 
+        const userDoc = userQuerySnapshot.docs[0];
+        const userId = userDoc.id;
+        console.log('User ID:', userId);
+        const savedListings = userDoc.data().saved || [];
+
+        // Add the listing to the savedListings array
+        savedListings.push(listing);
+
+        // Update the user document with the updated savedListings array
+        await updateDoc(doc(db, 'users', userId), { saved: savedListings });
+
+        console.log('Listing saved for later in user with ID:', userId);
         res.sendStatus(200);
     } catch (error) {
         console.error('Error saving listing:', error);
         res.sendStatus(500);
     }
 });
+
+
+
+
 
 
 
