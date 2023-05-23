@@ -404,14 +404,15 @@ app.post('/post_all', async (req, res) => {
         if (!userSnapshot.empty) {
             const userData = userSnapshot.docs[0].data();
             const phone = userData.phone;
-
+            const name = userData.name;
             const listringData = {
                 title: title,
                 price: price,
                 category: category,
                 description: description,
                 userid: userId,
-                phone: phone // Add the 'phone' field to the listing data
+                phone: phone, // Add the 'phone' field to the listing data
+                name: name
             };
 
             // Save the post data to Firestore
@@ -720,16 +721,7 @@ app.get('/User/:uid', async (req, res) => {
         res.status(500).send('An error occurred while retrieving user listings');
     }
 });
-//
-// const docRef = doc(db, "products", "listed-items");
-// const docSnap = await getDoc(docRef);
-//
-// if (docSnap.exists()) {
-//     console.log("Document data:", docSnap.data());
-// } else {
-//     // docSnap.data() will be undefined in this case
-//     console.log("No such document!");
-// }
+
 // Start the server
 app.listen(port, () => {
     console.log(`Server is running on port: ${port}`);
