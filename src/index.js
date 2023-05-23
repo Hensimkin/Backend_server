@@ -649,6 +649,21 @@ app.get('/user_details', async (req, res) => {
         res.status(500).send('An error occurred while retrieving user listings');
     }
 });
+
+
+app.get('/User/:uid', async (req, res) => {
+    const { uid } = req.params; // Use req.params.uid to access the uid value
+    console.log({ uid });
+    try {
+        const querySnapshot = await getDocs(query(collection(db, 'listings'), where('userid', '==', uid)));
+        const listings = querySnapshot.docs.map((doc) => doc.data());
+
+        res.json(listings);
+    } catch (error) {
+        console.error('Error retrieving user listings:', error);
+        res.status(500).send('An error occurred while retrieving user listings');
+    }
+});
 //
 // const docRef = doc(db, "products", "listed-items");
 // const docSnap = await getDoc(docRef);
