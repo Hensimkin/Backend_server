@@ -571,13 +571,27 @@ app.post('/saved', async (req, res) => {
 
 
 app.post('/save', async (req, res) => {
-    try{
-        const newSave = new Save(getAuth().currentUser.uid, req.body);
-        await addDoc(collection(db, 'saves'), newSave);
-        console.log('Post data saved:', newSave.toString());
-        //need to edit catch -> for different cases.
-    }catch (e){console.log("Can't save this post", newSave.toString());}
+    // try{
+    //     const newSave = new Save(getAuth().currentUser.uid, req.body);
+    //     await addDoc(collection(db, 'saves'), newSave);
+    //     console.log('Post data saved:', newSave.toString());
+    //     //need to edit catch -> for different cases.
+    // }catch (e){console.log("Can't save this post", newSave.toString());}
+    try {
+        const { listing } = req.body;
+        console.log('Listing data:', listing);
+        // Assuming you have initialized Firebase and have access to the Firestore instance
+        const savesCollectionRef = collection(db, 'saves');
 
+        // Create a new document in the 'saves' collection with the listing data
+        const newSaveDocRef = await addDoc(savesCollectionRef, listing);
+        console.log('Listing saved with ID:', newSaveDocRef.id);
+
+        res.sendStatus(200);
+    } catch (error) {
+        console.error('Error saving listing:', error);
+        res.sendStatus(500);
+    }
 });
 
 
