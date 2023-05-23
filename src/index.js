@@ -265,6 +265,10 @@ app.post('/post_approve', async (req, res) => {
             password: pass,
             phone: phone,
             name: fullName,
+            birthdate:date,
+            saved:[],
+            followers: [],
+            following:[]
         };
         try
         {
