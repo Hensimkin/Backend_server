@@ -2,12 +2,16 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
-import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs,where,query, updateDoc } from "firebase/firestore";
-import { firebaseConfig } from './config/firebase-config.js';
-import { createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword,
-    fetchSignInMethodsForEmail,sendEmailVerification, sendPasswordResetEmail, setPersistence, browserLocalPersistence  } from 'firebase/auth'
+import { initializeApp } from 'firebase/app';
+import {
+  getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, where, query, updateDoc,
+} from 'firebase/firestore';
+import {
+  createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword,
+  fetchSignInMethodsForEmail, sendEmailVerification, sendPasswordResetEmail, setPersistence, browserLocalPersistence,
+} from 'firebase/auth';
 import multer from 'multer';
+import { firebaseConfig } from './config/firebase-config.js';
 
 // Set up the server
 const port = process.env.PORT || 5000;
@@ -22,30 +26,29 @@ const firestore_app = initializeApp(firebaseConfig);
 const db = getFirestore(firestore_app);
 
 async function checkEmailInUse(email) {
-    try {
-        const methods = await fetchSignInMethodsForEmail(getAuth(),email);
-        return methods.length > 0; // Returns true if email is already in use
-    } catch (error) {
-        console.error('Error checking email:', error);
-        throw error;
-    }
+  try {
+    const methods = await fetchSignInMethodsForEmail(getAuth(), email);
+    return methods.length > 0; // Returns true if email is already in use
+  } catch (error) {
+    console.error('Error checking email:', error);
+    throw error;
+  }
 }
-
 
 // Set up file upload storage
 const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        // Specify the directory where you want to save the uploaded pictures
-        cb(null, 'uploads/');
-    },
-    filename: function (req, file, cb) {
-        // Generate a unique filename for each uploaded picture
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        cb(null, file.fieldname + '-' + uniqueSuffix);
-    }
+  destination(req, file, cb) {
+    // Specify the directory where you want to save the uploaded pictures
+    cb(null, 'uploads/');
+  },
+  filename(req, file, cb) {
+    // Generate a unique filename for each uploaded picture
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    cb(null, `${file.fieldname}-${uniqueSuffix}`);
+  },
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ storage });
 
 // Variables for validation
 let dateValid = false;
@@ -56,7 +59,7 @@ let date = null;
 let mail = null;
 let pass = null;
 let phone = null;
-let storedData={};
+const storedData = {};
 
 // Firebase authentication instance
 let auth = getAuth();
@@ -65,8 +68,8 @@ let auth = getAuth();
  * Main route of the server.
  */
 app.get('/', (req, res) => {
-    console.log('A new request');
-    res.send('Hello from server main page');
+  console.log('A new request');
+  res.send('Hello from server main page');
 });
 
 /**
@@ -79,28 +82,27 @@ app.get('/', (req, res) => {
  * If the sign in fails, it sends a response with 'no'.
  */
 app.post('/post_signin', async (req, res) => {
-    const { email, password } = req.body.credentials;
-    auth = getAuth();
+  const { email, password } = req.body.credentials;
+  auth = getAuth();
 
-    try {
-        await setPersistence(auth, browserLocalPersistence);
-        await signInWithEmailAndPassword(auth, email, password);
+  try {
+    await setPersistence(auth, browserLocalPersistence);
+    await signInWithEmailAndPassword(auth, email, password);
 
-        if (!auth.currentUser.emailVerified) {
-            console.log("Need to verify email");
-            res.send('You need to verify your email');
-        } else {
-            console.log('Baruch Haba Ya Malshin!' + auth.currentUser.email.toString());
-            console.log('Transfer to Home page');
-            res.send('Welcome !');
-        }
-    } catch (error) {
-        console.log("Incorrect details");
-        console.log(error);
-        res.send('Incorrect details');
+    if (!auth.currentUser.emailVerified) {
+      console.log('Need to verify email');
+      res.send('You need to verify your email');
+    } else {
+      console.log(`Baruch Haba Ya Malshin!${auth.currentUser.email.toString()}`);
+      console.log('Transfer to Home page');
+      res.send('Welcome !');
     }
+  } catch (error) {
+    console.log('Incorrect details');
+    console.log(error);
+    res.send('Incorrect details');
+  }
 });
-
 
 /**
  * Receive and validate an email.
@@ -111,79 +113,62 @@ app.post('/post_signin', async (req, res) => {
  */
 
 app.post('/post_email', async (req, res) => {
-    const { email } = req.body;
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const { email } = req.body;
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (!emailPattern.test(email)) {
-        res.send('Please enter a valid email');
+  if (!emailPattern.test(email)) {
+    res.send('Please enter a valid email');
+  } else {
+    try {
+      const isEmailInUse = await checkEmailInUse(email);
+
+      if (isEmailInUse) {
+        res.send('Email is already in use');
+      } else {
+        res.send('Email is available');
+        mail = email;
+        emailValid = true;
+      }
+    } catch (error) {
+      console.error('Error checking email:', error);
+      res.status(500).send('An error occurred while checking the email');
     }
-    else
-    {
-        try {
-            const isEmailInUse = await checkEmailInUse(email);
+  }
 
-            if (isEmailInUse) {
-                res.send('Email is already in use');
-            } else
-            {
-                res.send('Email is available');
-                mail = email;
-                emailValid = true;
-            }
-        } catch (error) {
-            console.error('Error checking email:', error);
-            res.status(500).send('An error occurred while checking the email');
-        }
-    }
-
-    console.log(email);
+  console.log(email);
 });
-
-
 
 app.post('/post_reset', async (req, res) => {
-    const { email } = req.body;
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    auth = getAuth();
-    if (!emailPattern.test(email)) {
-        res.send('Please enter a valid email');
-    }
-    else
-    {
-        try {
-            const isEmailInUse = await checkEmailInUse(email);
+  const { email } = req.body;
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  auth = getAuth();
+  if (!emailPattern.test(email)) {
+    res.send('Please enter a valid email');
+  } else {
+    try {
+      const isEmailInUse = await checkEmailInUse(email);
 
-            if (isEmailInUse) {
-                sendPasswordResetEmail(auth, email)
-                    .then(() => {
-                        // Password reset email sent successfully
-                        console.log("Password reset email sent");
-                        res.send('Password reset email sent');
-                    })
-                    .catch(function(error) {
-                        // An error occurred while sending the password reset email
-                        console.error(error);
-                    });
-            }
-            else
-            {
-                res.send('Invalid details');
-
-            }
-        } catch (error) {
-            console.error('Error checking email:', error);
-            res.status(500).send('An error occurred while checking the email');
-        }
+      if (isEmailInUse) {
+        sendPasswordResetEmail(auth, email)
+          .then(() => {
+            // Password reset email sent successfully
+            console.log('Password reset email sent');
+            res.send('Password reset email sent');
+          })
+          .catch((error) => {
+            // An error occurred while sending the password reset email
+            console.error(error);
+          });
+      } else {
+        res.send('Invalid details');
+      }
+    } catch (error) {
+      console.error('Error checking email:', error);
+      res.status(500).send('An error occurred while checking the email');
     }
-    console.log(email);
+  }
+  console.log(email);
 });
-
-
-
-
-
-
-
 
 /**
  * Receive and validate a password.
@@ -193,29 +178,26 @@ app.post('/post_reset', async (req, res) => {
  * If the password is invalid, it sends a response with an error message.
  */
 app.post('/post_password', async (req, res) => {
-    const { password } = req.body;
-    passwordValid = false;
-    if (password.length < 8) {
-        res.send('Password must be at least 8 characters long');
-    } else if (!password.match(/[a-zA-Z]/)) {
-        res.send('Password must contain at least one letter');
-    } else {
-        pass = password;
-        passwordValid = true;
-        res.send('Password received');
-    }
-    console.log(password);
+  const { password } = req.body;
+  passwordValid = false;
+  if (password.length < 8) {
+    res.send('Password must be at least 8 characters long');
+  } else if (!password.match(/[a-zA-Z]/)) {
+    res.send('Password must contain at least one letter');
+  } else {
+    pass = password;
+    passwordValid = true;
+    res.send('Password received');
+  }
+  console.log(password);
 });
 
 app.post('/post_phoneNumber', async (req, res) => {
-    const phoneNumber = Object.keys(req.body)[0]; // Get the first property name from req.body as the phone number
-    console.log(phoneNumber); // Print the phone number
-    phone = phoneNumber;
-    res.send('Phone number received successfully.'); // Send a response to the client
+  const phoneNumber = Object.keys(req.body)[0]; // Get the first property name from req.body as the phone number
+  console.log(phoneNumber); // Print the phone number
+  phone = phoneNumber;
+  res.send('Phone number received successfully.'); // Send a response to the client
 });
-
-
-
 
 /**
  * Receive and validate a birthdate.
@@ -224,23 +206,23 @@ app.post('/post_phoneNumber', async (req, res) => {
  * If the birthdate is valid, it sends a response with 'Date received'.
  */
 app.post('/post_birthdate', async (req, res) => {
-    const today = new Date();
-    dateValid = false;
-    const selectedDate = Object.keys(req.body)[0];
-    console.log(selectedDate);
-    const birthDate = new Date(selectedDate);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDifference = today.getMonth() - birthDate.getMonth();
-    if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
-    }
-    if (age < 13) {
-        res.send('You must be at least 13 years old.');
-    } else {
-        date = selectedDate;
-        dateValid = true;
-        res.send('Date received');
-    }
+  const today = new Date();
+  dateValid = false;
+  const selectedDate = Object.keys(req.body)[0];
+  console.log(selectedDate);
+  const birthDate = new Date(selectedDate);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDifference = today.getMonth() - birthDate.getMonth();
+  if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  if (age < 13) {
+    res.send('You must be at least 13 years old.');
+  } else {
+    date = selectedDate;
+    dateValid = true;
+    res.send('Date received');
+  }
 });
 
 /**
@@ -250,71 +232,57 @@ app.post('/post_birthdate', async (req, res) => {
  * If any of the validation fails, it sends a response with 'no'.
  */
 app.post('/post_approve', async (req, res) => {
-    if (passwordValid && emailValid && dateValid) {
-        fullName = Object.keys(req.body)[0];
-        console.log(fullName);
+  if (passwordValid && emailValid && dateValid) {
+    fullName = Object.keys(req.body)[0];
+    console.log(fullName);
 
+    const user = {
+      mail,
+      password: pass,
+    };
 
-        const user = {
-            mail: mail,
-            password: pass,
-        };
+    const adduser = {
+      mail,
+      password: pass,
+      phone,
+      name: fullName,
+      birthdate: date,
+      saved: [],
+      followers: [],
+      following: [],
+    };
+    try {
+      const docRef = await createUserWithEmailAndPassword(auth, user.mail, user.password);
+      const userObj = docRef.user;
+      try {
+        console.log('sending mail');
+        await sendEmailVerification(userObj);
+        console.log('Email verification sent');
+      } catch (error) {
+        console.error('Error sending email verification:', error);
+      }
 
-        const adduser = {
-            mail: mail,
-            password: pass,
-            phone: phone,
-            name: fullName,
-            birthdate:date,
-            saved:[],
-            followers: [],
-            following:[]
-        };
-        try
-        {
-            const docRef = await createUserWithEmailAndPassword(auth, user.mail, user.password);
-            const userObj = docRef.user;
-            try {
-                console.log('sending mail');
-                await sendEmailVerification(userObj);
-                console.log("Email verification sent");
-            }
-            catch (error) {
-                console.error("Error sending email verification:", error);
-            }
-
-            console.log('Transfer to Home Page');
-            res.send('yes');
-            try {
-                // Save the post data to Firestore
-                const newUser = { ...adduser, uid: userObj.uid };
-                await addDoc(collection(db, 'users'), newUser);
-                console.log('Post data saved:', newUser);
-            }
-            catch(error)
-            {
-                console.error("Error sending email verification:", error);
-            }
-        }
-
-        catch (e)
-        {
-            if (e.code === 'auth/email-already-in-use') {
-                // Handle the case where the email is already in use
-                console.log('Email is already in use. Please choose a different email.');
-                res.send('Email already in use');
-            }
-            else
-                console.error("Error adding document: ", e);
-        }
-
-
+      console.log('Transfer to Home Page');
+      res.send('yes');
+      try {
+        // Save the post data to Firestore
+        const newUser = { ...adduser, uid: userObj.uid };
+        await addDoc(collection(db, 'users'), newUser);
+        console.log('Post data saved:', newUser);
+      } catch (error) {
+        console.error('Error sending email verification:', error);
+      }
+    } catch (e) {
+      if (e.code === 'auth/email-already-in-use') {
+        // Handle the case where the email is already in use
+        console.log('Email is already in use. Please choose a different email.');
+        res.send('Email already in use');
+      } else console.error('Error adding document: ', e);
     }
-    else {
-
-        console.log('Not valid signup');
-        res.send('no');
-    }
+  } else {
+    console.log('Not valid signup');
+    res.send('no');
+  }
 });
 
 /**
@@ -324,11 +292,11 @@ app.post('/post_approve', async (req, res) => {
  * It sends a response with 'title received'.
  */
 app.post('/post_title', async (req, res) => {
-    const { title } = req.body;
-    console.log(title);
-    storedData.title = title;
-    console.log(storedData);
-    res.send('title received'); // Add this line to send a response back to the client
+  const { title } = req.body;
+  console.log(title);
+  storedData.title = title;
+  console.log(storedData);
+  res.send('title received'); // Add this line to send a response back to the client
 });
 
 /**
@@ -338,11 +306,11 @@ app.post('/post_title', async (req, res) => {
  * It sends a response with 'price received'.
  */
 app.post('/post_price', async (req, res) => {
-    const { price } = req.body;
-    console.log(price);
-    storedData.price = price;
-    console.log(storedData);
-    res.send('price received'); // Add this line to send a response back to the client
+  const { price } = req.body;
+  console.log(price);
+  storedData.price = price;
+  console.log(storedData);
+  res.send('price received'); // Add this line to send a response back to the client
 });
 
 /**
@@ -352,11 +320,11 @@ app.post('/post_price', async (req, res) => {
  * It sends a response with 'category received'.
  */
 app.post('/post_category', async (req, res) => {
-    const { category } = req.body;
-    console.log(category);
-    storedData.category = category;
-    console.log(storedData);
-    res.send('category received'); // Add this line to send a response back to the client
+  const { category } = req.body;
+  console.log(category);
+  storedData.category = category;
+  console.log(storedData);
+  res.send('category received'); // Add this line to send a response back to the client
 });
 
 /**
@@ -366,11 +334,11 @@ app.post('/post_category', async (req, res) => {
  * It sends a response with 'description received'.
  */
 app.post('/post_description', async (req, res) => {
-    const { description } = req.body;
-    console.log(description);
-    storedData.description = description;
-    console.log(storedData);
-    res.send('title received'); // Add this line to send a response back to the client
+  const { description } = req.body;
+  console.log(description);
+  storedData.description = description;
+  console.log(storedData);
+  res.send('title received'); // Add this line to send a response back to the client
 });
 
 /**
@@ -380,410 +348,484 @@ app.post('/post_description', async (req, res) => {
  * It sends a response with 'Pictures received'.
  */
 app.post('/post_pictures', upload.array('pictures'), async (req, res) => {
-    // The uploaded pictures are available in req.files array
-    console.log(req.files);
-    storedData.pictures = req.files.map(file => file.filename);
-    console.log(storedData);
-    console.log(storage);
-    res.send('Pictures received');
+  // The uploaded pictures are available in req.files array
+  console.log(req.files);
+  storedData.pictures = req.files.map((file) => file.filename);
+  console.log(storedData);
+  console.log(storage);
+  res.send('Pictures received');
 });
 
 app.get('/get_stored_data', (req, res) => {
-    res.json(storedData);
+  res.json(storedData);
 });
-
 
 app.post('/post_all', async (req, res) => {
-    const { title, price, category, description } = req.body;
-    // const pictures = req.files.map(file => file.filename);
-    auth = getAuth();
+  const {
+    title, price, category, description,
+  } = req.body;
+  // const pictures = req.files.map(file => file.filename);
+  auth = getAuth();
 
-    const userId = auth.currentUser.uid;
+  const userId = auth.currentUser.uid;
 
-    try {
-        // Retrieve the user document that matches the userId
-        const userQuery = query(collection(db, 'users'), where('uid', '==', userId));
-        const userSnapshot = await getDocs(userQuery);
+  try {
+    // Retrieve the user document that matches the userId
+    const userQuery = query(collection(db, 'users'), where('uid', '==', userId));
+    const userSnapshot = await getDocs(userQuery);
 
-        if (!userSnapshot.empty) {
-            const userData = userSnapshot.docs[0].data();
-            const phone = userData.phone;
-            const name = userData.name;
-            const listringData = {
-                title: title,
-                price: price,
-                category: category,
-                description: description,
-                userid: userId,
-                phone: phone, // Add the 'phone' field to the listing data
-                name: name
-            };
+    if (!userSnapshot.empty) {
+      const userData = userSnapshot.docs[0].data();
+      const { phone } = userData;
+      const { name } = userData;
+      const listringData = {
+        title,
+        price,
+        category,
+        description,
+        userid: userId,
+        phone, // Add the 'phone' field to the listing data
+        name,
+      };
 
-            // Save the post data to Firestore
-            await addDoc(collection(db, 'listings'), listringData);
-            console.log('Post data saved:', listringData);
+      // Save the post data to Firestore
+      await addDoc(collection(db, 'listings'), listringData);
+      console.log('Post data saved:', listringData);
 
-            // You can also save the pictures to storage and associate them with the post if needed
-            // const pictureUrls = req.files.map(file => file.filename);
-            // Save the picture URLs to Firestore or storage and associate them with the post
+      // You can also save the pictures to storage and associate them with the post if needed
+      // const pictureUrls = req.files.map(file => file.filename);
+      // Save the picture URLs to Firestore or storage and associate them with the post
 
-            res.send('Data received');
-        } else {
-            res.status(404).send('User not found');
-        }
-    } catch (error) {
-        console.error('Error saving post data:', error);
-        res.status(500).send('An error occurred while saving the post data');
+      res.send('Data received');
+    } else {
+      res.status(404).send('User not found');
     }
+  } catch (error) {
+    console.error('Error saving post data:', error);
+    res.status(500).send('An error occurred while saving the post data');
+  }
 });
-
 
 // Profile
 
 app.post('/edit_name', async (req, res) => {
-    const {FullName} = req.body;
-    console.log(FullName);
-    try {
-        const userQuery = query(collection(db, 'users'), where('uid', '==', getAuth().currentUser.uid));
-        const userSnapshot = await getDocs(userQuery);
-        const userDoc = userSnapshot.docs[0]; // Assuming there is only one matching user document
+  const { FullName } = req.body;
+  console.log(FullName);
+  try {
+    const userQuery = query(collection(db, 'users'), where('uid', '==', getAuth().currentUser.uid));
+    const userSnapshot = await getDocs(userQuery);
+    const userDoc = userSnapshot.docs[0]; // Assuming there is only one matching user document
 
-        const updatedUserData = {
-            mail: userDoc.data().mail,
-            name: FullName,
-            uid: userDoc.data().uid,
-            phone: userDoc.data().phone,
-        };
+    const updatedUserData = {
+      mail: userDoc.data().mail,
+      name: FullName,
+      uid: userDoc.data().uid,
+      phone: userDoc.data().phone,
+    };
 
-        await updateDoc(doc(db, 'users', userDoc.id), updatedUserData);
+    await updateDoc(doc(db, 'users', userDoc.id), updatedUserData);
 
-        console.log('name changed');
-        console.log(updatedUserData.name);
-        res.send('Name has changed');
-    } catch (error) {
-        console.log(error);
-        console.log('name unchanmged');
-        res.send('name unchanged');
-    }
+    console.log('name changed');
+    console.log(updatedUserData.name);
+    res.send('Name has changed');
+  } catch (error) {
+    console.log(error);
+    console.log('name unchanmged');
+    res.send('name unchanged');
+  }
 });
 
 app.post('/edit_phone_number', async (req, res) => {
-    const { PhoneNumber } = req.body;
-    console.log(PhoneNumber);
-    try {
-        const userQuery = query(collection(db, 'users'), where('uid', '==', getAuth().currentUser.uid));
-        const userSnapshot = await getDocs(userQuery);
-        const userDoc = userSnapshot.docs[0]; // Assuming there is only one matching user document
+  const { PhoneNumber } = req.body;
+  console.log(PhoneNumber);
+  try {
+    const userQuery = query(collection(db, 'users'), where('uid', '==', getAuth().currentUser.uid));
+    const userSnapshot = await getDocs(userQuery);
+    const userDoc = userSnapshot.docs[0]; // Assuming there is only one matching user document
 
-        const updatedUserData = {
-            mail: userDoc.data().mail,
-            name: userDoc.data().name,
-            uid: userDoc.data().uid,
-            phone: PhoneNumber,
-        };
+    const updatedUserData = {
+      mail: userDoc.data().mail,
+      name: userDoc.data().name,
+      uid: userDoc.data().uid,
+      phone: PhoneNumber,
+    };
 
-        await updateDoc(doc(db, 'users', userDoc.id), updatedUserData);
+    await updateDoc(doc(db, 'users', userDoc.id), updatedUserData);
 
-        console.log('Phone number changed');
-        console.log(updatedUserData.phone);
-        res.send('Phone number changed');
-    } catch (error) {
-        console.log(error);
-        console.log('Phone number unchanged');
-        res.send('Phone number unchanged');
-    }
+    console.log('Phone number changed');
+    console.log(updatedUserData.phone);
+    res.send('Phone number changed');
+  } catch (error) {
+    console.log(error);
+    console.log('Phone number unchanged');
+    res.send('Phone number unchanged');
+  }
 });
 
-
 class User {
-    constructor (name, mail, phone ) {
-        this.name = name;
-        this.mail = mail;
-        this.phone = phone;
-    }
-    toString() {
-        return this.name + ', ' + this.mail + ', ' + this.phone;
-    }
+  constructor(name, mail, phone) {
+    this.name = name;
+    this.mail = mail;
+    this.phone = phone;
+  }
+
+  toString() {
+    return `${this.name}, ${this.mail}, ${this.phone}`;
+  }
 }
 
 // Firestore data converter
 const userConverter = {
-    toFirestore: (user) => {
-        return {
-            name: user.name,
-            mail: user.mail,
-            phone: user.phone
-        };
-    },
-    fromFirestore: (snapshot, options) => {
-        const data = snapshot.data(options);
-        return new User(data.name, data.mail, data.phone);
-    }
+  toFirestore: (user) => ({
+    name: user.name,
+    mail: user.mail,
+    phone: user.phone,
+  }),
+  fromFirestore: (snapshot, options) => {
+    const data = snapshot.data(options);
+    return new User(data.name, data.mail, data.phone);
+  },
 };
 
-
-
-
 app.post('/edit_profile', async (req, res) => {
-    try {
-        const user = getDoc(collection(db, 'users'));
-        const userRef = User((await user).data.toString());
-        console.log(userRef);
-
-    }catch (e) {}
-
+  try {
+    const user = getDoc(collection(db, 'users'));
+    const userRef = User((await user).data.toString());
+    console.log(userRef);
+  } catch (e) {}
 });
 
 app.post('/unfollow', async (req, res) => {
-    const {unfollowedUser} = req.body;
-    console.log(unfollowedUser);
-    res.send("Following removed");
+  const followedUid = req.body.unfollowedUser.id;
+  const currentUserUid = auth.currentUser.uid;
+  try {
+
+    // Remove the unfollowed user from the current user's following list
+    const userQuery = query(collection(db, 'users'), where('uid', '==', currentUserUid));
+    const userSnapshot = await getDocs(userQuery);
+    const userDocs = userSnapshot.docs;
+    if (userDocs.length === 0) {
+      res.status(404).send('Current user not found');
+      return;
+    }
+
+    const userDoc = userDocs[0];
+    const userData = userDoc.data();
+    const updatedFollowing = userData.following.filter((uid) => uid !== followedUid);
+    const updatedUserData = {
+      ...userData,
+      following: updatedFollowing.length > 0 ? updatedFollowing : [], // Check if the array is empty
+    };
+
+    await updateDoc(doc(db, 'users', userDoc.id), updatedUserData);
+
+    // Remove the current user from the unfollowed user's followers list
+    const unfollowedUserQuery = query(collection(db, 'users'), where('uid', '==', followedUid));
+    const unfollowedUserSnapshot = await getDocs(unfollowedUserQuery);
+    const unfollowedUserDocs = unfollowedUserSnapshot.docs;
+    if (unfollowedUserDocs.length === 0) {
+      res.status(404).send('Unfollowed user not found');
+      return;
+    }
+
+    const unfollowedUserDoc = unfollowedUserDocs[0];
+    const unfollowedUserData = unfollowedUserDoc.data();
+    const updatedFollowers = unfollowedUserData.followers.filter((uid) => uid !== currentUserUid);
+    const updatedUnfollowedUserData = {
+      ...unfollowedUserData,
+      followers: updatedFollowers.length > 0 ? updatedFollowers : [], // Check if the array is empty
+    };
+
+    await updateDoc(doc(db, 'users', unfollowedUserDoc.id), updatedUnfollowedUserData);
+
+    res.send('Unfollow successful');
+  } catch (error) {
+    console.log(error);
+    res.status(500).send('Failed to unfollow');
+  }
 });
-
-
-
 
 class Follower {
-    constructor(uid1, uid2){
-        this.follower = uid1;
-        this.followed = uid2;
-    }
-    toString(){
-        return this.follower + ' Started Following '+ this.followed
-    }
-};
+  constructor(uid1, uid2) {
+    this.follower = uid1;
+    this.followed = uid2;
+  }
 
+  toString() {
+    return `${this.follower} Started Following ${this.followed}`;
+  }
+}
 
 app.post('/follow', async (req, res) => {
-    const followed_uid = req.body['uid'];
+  const followed_uid = req.body['uid'];
+  const currentUserUid = auth.currentUser.uid
 
-    try {
-        const userQuery = query(collection(db, 'users'), where('uid', '==', getAuth().currentUser.uid));
-        const userSnapshot = await getDocs(userQuery);
-        let userDoc = userSnapshot.docs[0]; // Assuming there is only one matching user document
-
-        // Update the user's following list
-        const updatedFollowing = [...userDoc.data().following, followed_uid];
-        const updatedUserData = {
-            ...userDoc.data(),
-            following: updatedFollowing,
-        };
-
-        await updateDoc(doc(db, 'users', userDoc.id), updatedUserData);
-
-        // Update the followed user's followers list
-        const userQuery2 = query(collection(db, 'users'), where('uid', '==', followed_uid));
-        const userSnapshot2 = await getDocs(userQuery2);
-        let userDoc2 = userSnapshot2.docs[0]; // Assuming there is only one matching user document
-
-        const updatedFollowers = [...userDoc2.data().followers, getAuth().currentUser.uid];
-        const updatedUserData2 = {
-            ...userDoc2.data(),
-            followers: updatedFollowers,
-        };
-
-        await updateDoc(doc(db, 'users', userDoc2.id), updatedUserData2);
-
-        res.send('yes');
-    } catch (error) {
-        console.log(error);
-        res.send('no');
+  try {
+    const userQuery = query(collection(db, 'users'), where('uid', '==', currentUserUid));
+    const userSnapshot = await getDocs(userQuery);
+    const userDocs = userSnapshot.docs;
+    if (userDocs.length === 0) {
+      res.send('User not found');
+      return;
     }
+
+    const userDoc = userDocs[0];
+    const userData = userDoc.data();
+
+    // Update the user's following list
+    const updatedFollowing = userData.following || [];
+    if (!updatedFollowing.includes(followed_uid)) {
+      updatedFollowing.push(followed_uid);
+    }
+    const updatedUserData = { ...userData, following: updatedFollowing };
+
+    await updateDoc(doc(db, 'users', userDoc.id), updatedUserData);
+
+    // Update the followed user's followers list
+    const followedUserQuery = query(collection(db, 'users'), where('uid', '==', followed_uid));
+    const followedUserSnapshot = await getDocs(followedUserQuery);
+    const followedUserDocs = followedUserSnapshot.docs;
+    if (followedUserDocs.length === 0) {
+      res.send('Followed user not found');
+      return;
+    }
+
+    const followedUserDoc = followedUserDocs[0];
+    const followedUserData = followedUserDoc.data();
+    const updatedFollowers = followedUserData.followers || [];
+
+    if (!updatedFollowers.includes(currentUserUid)) {
+      updatedFollowers.push(currentUserUid);
+    }
+    const updatedFollowedUserData = { ...followedUserData, followers: updatedFollowers };
+
+    await updateDoc(doc(db, 'users', followedUserDoc.id), updatedFollowedUserData);
+
+    res.send('Success');
+  } catch (error) {
+    console.log(error);
+    res.send('Error occurred');
+  }
 });
 
-
-
 // show the followers list
-app.post('/followers', async (req, res) => {
-    auth = getAuth();
-    const userId = auth.currentUser.uid // Assuming you have middleware to authenticate the user and populate `req.user`
-    try {
-        const querySnapshot = await getDocs(query(collection(db, 'followers'), where('follower-uid', '==', userId)));
-        const followers = querySnapshot.docs.map((doc) => doc.data());
+app.get('/followers', async (req, res) => {
+  try {
+    const currentUserUid = getAuth().currentUser.uid;
 
-        res.json(followers);
-    } catch (error) {
-        console.error('Error retrieving followers:', error);
-        res.status(500).send('An error occurred while retrieving followers list');
-    }
+    const userQuery = query(collection(db, 'users'), where('uid', '==', currentUserUid));
+    const userSnapshot = await getDocs(userQuery);
+    const userDoc = userSnapshot.docs[0];
+
+    const followersUids = userDoc.data().followers;
+
+    const followersQuery = query(collection(db, 'users'), where('uid', 'in', followersUids));
+    const followersSnapshot = await getDocs(followersQuery);
+
+    const followersList = followersSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      username: doc.data().username,
+      name: doc.data().name,
+    }));
+
+    res.json(followersList);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send('Failed to fetch followers list');
+  }
 });
 
 // show the following list
-app.post('/following', async (req, res) => {
-    auth = getAuth();
-    const userId = auth.currentUser.uid // Assuming you have middleware to authenticate the user and populate `req.user`
-    try {
-        const querySnapshot = await getDocs(query(collection(db, 'followers'), where('followed-uid', '==', userId)));
-        const following = querySnapshot.docs.map((doc) => doc.data());
+app.get('/following', async (req, res) => {
+  try {
+    const currentUserUid = getAuth().currentUser.uid;
 
-        res.json(following);
-    } catch (error) {
-        console.error('Error retrieving following:', error);
-        res.status(500).send('An error occurred while retrieving following list');
-    }
+    const userQuery = query(collection(db, 'users'), where('uid', '==', currentUserUid));
+    const userSnapshot = await getDocs(userQuery);
+    const userDoc = userSnapshot.docs[0];
+
+    const followingUids = userDoc.data().following;
+
+    const followingQuery = query(collection(db, 'users'), where('uid', 'in', followingUids));
+    const followingSnapshot = await getDocs(followingQuery);
+
+    const followingList = followingSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      username: doc.data().username,
+      name: doc.data().name, // Add the name property
+    }));
+
+    res.json(followingList);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send('Failed to fetch following list');
+  }
 });
 
+app.get('/get_stored_data', async (req, res) => {
+  try {
+    // Get the user ID from the authenticated user
+    const userId = getAuth().currentUser.uid;
 
-class Save{
-    constructor(uid, pid) {
-        this.uid = uid;
-        this.pid = pid;
+    // Retrieve the user document that matches the userId
+    const userQuery = query(collection(db, 'users'), where('uid', '==', userId));
+    const userSnapshot = await getDocs(userQuery);
+
+    if (!userSnapshot.empty) {
+      const userData = userSnapshot.docs[0].data();
+      const { name } = userData;
+
+      // Include the user's name in the stored data
+      const response = {
+        ...storedData,
+        name: name
+      };
+
+      res.json(response);
+    } else {
+      res.status(404).send('User not found');
     }
-    toString(){return `${this.uid} saved ${this.pid}`;}
+  } catch (error) {
+    console.error('Error retrieving stored data:', error);
+    res.status(500).send('An error occurred while retrieving the stored data');
+  }
+});
+
+class Save {
+  constructor(uid, pid) {
+    this.uid = uid;
+    this.pid = pid;
+  }
+  toString() { return `${this.uid} saved ${this.pid}`; }
 }
 
 // showing the saved list for the user
 app.post('/saved', async (req, res) => {
-    try {
-        const authId = auth.currentUser.uid;
-        const userQuerySnapshot = await getDocs(query(collection(db, 'users'), where('uid', '==', authId)));
+  try {
+    const authId = auth.currentUser.uid;
+    const userQuerySnapshot = await getDocs(query(collection(db, 'users'), where('uid', '==', authId)));
 
-        if (userQuerySnapshot.empty) {
-            console.error('User document not found');
-            res.sendStatus(404);
-            return;
-        }
-
-        const userDoc = userQuerySnapshot.docs[0];
-        const savedListings = userDoc.data().saved || [];
-
-        res.json(savedListings);
-    } catch (error) {
-        console.error('Error retrieving saved listings:', error);
-        res.status(500).send('An error occurred while retrieving saved listings');
+    if (userQuerySnapshot.empty) {
+      console.error('User document not found');
+      res.sendStatus(404);
+      return;
     }
+
+    const userDoc = userQuerySnapshot.docs[0];
+    const savedListings = userDoc.data().saved || [];
+
+    res.json(savedListings);
+  } catch (error) {
+    console.error('Error retrieving saved listings:', error);
+    res.status(500).send('An error occurred while retrieving saved listings');
+  }
 });
-
-
 
 app.post('/save', async (req, res) => {
-    try {
-        const { listing } = req.body;
-        console.log('listing:', listing);
-        const authId = auth.currentUser.uid;
-        console.log('Authenticated User ID:', authId);
-        const userQuerySnapshot = await getDocs(query(collection(db, 'users'), where('uid', '==', authId)));
-        console.log('User ID the first:', userQuerySnapshot);
+  try {
+    const { listing } = req.body;
+    console.log('listing:', listing);
+    const authId = auth.currentUser.uid;
+    console.log('Authenticated User ID:', authId);
+    const userQuerySnapshot = await getDocs(query(collection(db, 'users'), where('uid', '==', authId)));
+    console.log('User ID the first:', userQuerySnapshot);
 
-        if (userQuerySnapshot.empty) {
-            console.error('User document not found');
-            res.sendStatus(404);
-            return;
-        }
-
-        const userDoc = userQuerySnapshot.docs[0];
-        const userId = userDoc.id;
-        console.log('User ID:', userId);
-        const savedListings = userDoc.data().saved || [];
-
-        // Add the listing to the savedListings array
-        savedListings.push(listing);
-
-        // Update the user document with the updated savedListings array
-        await updateDoc(doc(db, 'users', userId), { saved: savedListings });
-
-        console.log('Listing saved for later in user with ID:', userId);
-        res.sendStatus(200);
-    } catch (error) {
-        console.error('Error saving listing:', error);
-        res.sendStatus(500);
+    if (userQuerySnapshot.empty) {
+      console.error('User document not found');
+      res.sendStatus(404);
+      return;
     }
+
+    const userDoc = userQuerySnapshot.docs[0];
+    const userId = userDoc.id;
+    console.log('User ID:', userId);
+    const savedListings = userDoc.data().saved || [];
+
+    // Add the listing to the savedListings array
+    savedListings.push(listing);
+
+    // Update the user document with the updated savedListings array
+    await updateDoc(doc(db, 'users', userId), { saved: savedListings });
+
+    console.log('Listing saved for later in user with ID:', userId);
+    res.sendStatus(200);
+  } catch (error) {
+    console.error('Error saving listing:', error);
+    res.sendStatus(500);
+  }
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 app.post('/signOut', async (req, res) => {
-    const auth = getAuth();
+  const auth = getAuth();
 
-    try {
-        await auth.signOut();
-        res.status(200).send('User signed out successfully');
-    } catch (error) {
-        console.error('Error signing out user:', error);
-        res.status(500).send('An error occurred while signing out');
-    }
+  try {
+    await auth.signOut();
+    res.status(200).send('User signed out successfully');
+  } catch (error) {
+    console.error('Error signing out user:', error);
+    res.status(500).send('An error occurred while signing out');
+  }
 });
 
-
 app.get('/user_listings', async (req, res) => {
-    auth = getAuth();
-    const userId = auth.currentUser.uid // Assuming you have middleware to authenticate the user and populate `req.user`
+  auth = getAuth();
+  const userId = auth.currentUser.uid; // Assuming you have middleware to authenticate the user and populate `req.user`
 
-    try {
-        const querySnapshot = await getDocs(query(collection(db, 'listings'), where('userid', '==', userId)));
-        const listings = querySnapshot.docs.map((doc) => doc.data());
+  try {
+    const querySnapshot = await getDocs(query(collection(db, 'listings'), where('userid', '==', userId)));
+    const listings = querySnapshot.docs.map((doc) => doc.data());
 
-        res.json(listings);
-    } catch (error) {
-        console.error('Error retrieving user listings:', error);
-        res.status(500).send('An error occurred while retrieving user listings');
-    }
+    res.json(listings);
+  } catch (error) {
+    console.error('Error retrieving user listings:', error);
+    res.status(500).send('An error occurred while retrieving user listings');
+  }
 });
 
 app.get('/home_listings', async (req, res) => {
-    auth = getAuth();
-    const userId = auth.currentUser.uid // Assuming you have middleware to authenticate the user and populate `req.user`
+  auth = getAuth();
+  const userId = auth.currentUser.uid; // Assuming you have middleware to authenticate the user and populate `req.user`
 
-    try {
-        const querySnapshot = await getDocs(query(collection(db, 'listings'), where('userid', '!=', userId)));
-        const listings = querySnapshot.docs.map((doc) => doc.data());
+  try {
+    const querySnapshot = await getDocs(query(collection(db, 'listings'), where('userid', '!=', userId)));
+    const listings = querySnapshot.docs.map((doc) => doc.data());
 
-        res.json(listings);
-    } catch (error) {
-        console.error('Error retrieving user listings:', error);
-        res.status(500).send('An error occurred while retrieving user listings');
-    }
+    res.json(listings);
+  } catch (error) {
+    console.error('Error retrieving user listings:', error);
+    res.status(500).send('An error occurred while retrieving user listings');
+  }
 });
-
 
 app.get('/user_details', async (req, res) => {
-    auth = getAuth();
-    const userMail = auth.currentUser.email // Assuming you have middleware to authenticate the user and populate `req.user`
+  auth = getAuth();
+  const userMail = auth.currentUser.email; // Assuming you have middleware to authenticate the user and populate `req.user`
 
-    try {
-        const querySnapshot = await getDocs(query(collection(db, 'users'), where('mail', '==', userMail)));
-        const users = querySnapshot.docs.map((doc) => doc.data());
+  try {
+    const querySnapshot = await getDocs(query(collection(db, 'users'), where('mail', '==', userMail)));
+    const users = querySnapshot.docs.map((doc) => doc.data());
 
-        res.json(users);
-    } catch (error) {
-        console.error('Error retrieving user listings:', error);
-        res.status(500).send('An error occurred while retrieving user listings');
-    }
+    res.json(users);
+  } catch (error) {
+    console.error('Error retrieving user listings:', error);
+    res.status(500).send('An error occurred while retrieving user listings');
+  }
 });
 
-
 app.get('/User/:uid', async (req, res) => {
-    const { uid } = req.params; // Use req.params.uid to access the uid value
-    try {
-        const querySnapshot = await getDocs(query(collection(db, 'listings'), where('userid', '==', uid)));
-        const listings = querySnapshot.docs.map((doc) => doc.data());
+  const { uid } = req.params; // Use req.params.uid to access the uid value
+  try {
+    const querySnapshot = await getDocs(query(collection(db, 'listings'), where('userid', '==', uid)));
+    const listings = querySnapshot.docs.map((doc) => doc.data());
 
-        res.json(listings);
-    } catch (error) {
-        console.error('Error retrieving user listings:', error);
-        res.status(500).send('An error occurred while retrieving user listings');
-    }
+    res.json(listings);
+  } catch (error) {
+    console.error('Error retrieving user listings:', error);
+    res.status(500).send('An error occurred while retrieving user listings');
+  }
 });
 
 // Start the server
 app.listen(port, () => {
-    console.log(`Server is running on port: ${port}`);
-})
-
-
-
-
-
+  console.log(`Server is running on port: ${port}`);
+});
