@@ -405,7 +405,6 @@ app.post('/post_all', async (req, res) => {
         if (!userSnapshot.empty) {
             const userData = userSnapshot.docs[0].data();
             const phone = userData.phone;
-            const name = userData.name;
 
             const listringData = {
                 title: title,
@@ -413,8 +412,7 @@ app.post('/post_all', async (req, res) => {
                 category: category,
                 description: description,
                 userid: userId,
-                phone: phone, // Add the 'phone' field to the listing data
-                name: name
+                phone: phone // Add the 'phone' field to the listing data
             };
 
             // Save the post data to Firestore
@@ -635,22 +633,6 @@ app.get('/home_listings', async (req, res) => {
         res.status(500).send('An error occurred while retrieving user listings');
     }
 });
-
-
-app.get('/User/:uid', async (req, res) => {
-    const { uid } = req.params; // Use req.params.uid to access the uid value
-    console.log({ uid });
-    try {
-        const querySnapshot = await getDocs(query(collection(db, 'listings'), where('userid', '==', uid)));
-        const listings = querySnapshot.docs.map((doc) => doc.data());
-
-        res.json(listings);
-    } catch (error) {
-        console.error('Error retrieving user listings:', error);
-        res.status(500).send('An error occurred while retrieving user listings');
-    }
-});
-
 
 
 app.get('/user_details', async (req, res) => {
