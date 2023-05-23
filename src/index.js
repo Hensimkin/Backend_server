@@ -3,12 +3,10 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, getDoc, collection, addDoc,
-    getDocs, where, query, deleteDoc, updateDoc } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs,where,query } from "firebase/firestore";
 import { firebaseConfig } from './config/firebase-config.js';
 import { createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword,
-    fetchSignInMethodsForEmail,sendEmailVerification, sendPasswordResetEmail, setPersistence, browserLocalPersistence  } from 'firebase/auth';
-import { getStorage, ref } from "firebase/storage";
+    fetchSignInMethodsForEmail,sendEmailVerification, sendPasswordResetEmail, setPersistence, browserLocalPersistence  } from 'firebase/auth'
 import multer from 'multer';
 
 
@@ -414,7 +412,7 @@ app.post('/post_all', async (req, res) => {
                 category: category,
                 description: description,
                 userid: userId,
-                phone: phone, // Add the 'phone' field to the listing data
+                phone: phone // Add the 'phone' field to the listing data
             };
 
             // Save the post data to Firestore
@@ -440,58 +438,14 @@ app.post('/post_all', async (req, res) => {
 app.post('/edit_name', async (req, res) => {
     const {FullName} = req.body;
     console.log(FullName);
-    try {
-        const userQuery = query(collection(db, 'users'), where('uid', '==', getAuth().currentUser.uid));
-        const userSnapshot = await getDocs(userQuery);
-        const userDoc = userSnapshot.docs[0]; // Assuming there is only one matching user document
-
-        const updatedUserData = {
-            mail: userDoc.data().mail,
-            name: FullName,
-            uid: userDoc.data().uid,
-            phone: userDoc.data().phone,
-        };
-
-        await updateDoc(doc(db, 'users', userDoc.id), updatedUserData);
-
-        console.log('name changed');
-        console.log(updatedUserData.name);
-        res.send('Name has changed');
-    } catch (error) {
-        console.log(error);
-        console.log('name unchanmged');
-        res.send('name unchanged');
-    }
+    res.send("Name changed");
 });
-
 
 app.post('/edit_phone_number', async (req, res) => {
-    const { PhoneNumber } = req.body;
+    const {PhoneNumber} = req.body;
     console.log(PhoneNumber);
-    try {
-        const userQuery = query(collection(db, 'users'), where('uid', '==', getAuth().currentUser.uid));
-        const userSnapshot = await getDocs(userQuery);
-        const userDoc = userSnapshot.docs[0]; // Assuming there is only one matching user document
-
-        const updatedUserData = {
-            mail: userDoc.data().mail,
-            name: userDoc.data().name,
-            uid: userDoc.data().uid,
-            phone: PhoneNumber,
-        };
-
-        await updateDoc(doc(db, 'users', userDoc.id), updatedUserData);
-
-        console.log('Phone number changed');
-        console.log(updatedUserData.phone);
-        res.send('Phone number changed');
-    } catch (error) {
-        console.log(error);
-        console.log('Phone number unchanged');
-        res.send('Phone number unchanged');
-    }
+    res.send("Phone number changed");
 });
-
 
 
 class User {
@@ -504,6 +458,7 @@ class User {
         return this.name + ', ' + this.mail + ', ' + this.phone;
     }
 }
+
 // Firestore data converter
 const userConverter = {
     toFirestore: (user) => {
@@ -535,8 +490,6 @@ app.post('/edit_profile', async (req, res) => {
 app.post('/unfollow', async (req, res) => {
     const {unfollowedUser} = req.body;
     console.log(unfollowedUser);
-    const unfollow = await getDoc(query(collection(db, 'followers'), where('follower-uid', '==', getAuth().currentUser.uid) &&where('followed-uid', '==', req.body)));
-    deleteDoc(unfollow);
     res.send("Following removed");
 });
 
@@ -668,7 +621,7 @@ app.get('/user_listings', async (req, res) => {
 
 app.get('/home_listings', async (req, res) => {
     auth = getAuth();
-    const userId = auth.currentUser.uid; // Assuming you have middleware to authenticate the user and populate `req.user`
+    const userId = auth.currentUser.uid // Assuming you have middleware to authenticate the user and populate `req.user`
 
     try {
         const querySnapshot = await getDocs(query(collection(db, 'listings'), where('userid', '!=', userId)));
@@ -696,6 +649,21 @@ app.get('/user_details', async (req, res) => {
         res.status(500).send('An error occurred while retrieving user listings');
     }
 });
+
+
+app.get('/User/:uid', async (req, res) => {
+    const { uid } = req.params; // Use req.params.uid to access the uid value
+    console.log({ uid });
+    try {
+        const querySnapshot = await getDocs(query(collection(db, 'listings'), where('userid', '==', uid)));
+        const listings = querySnapshot.docs.map((doc) => doc.data());
+
+        res.json(listings);
+    } catch (error) {
+        console.error('Error retrieving user listings:', error);
+        res.status(500).send('An error occurred while retrieving user listings');
+    }
+});
 //
 // const docRef = doc(db, "products", "listed-items");
 // const docSnap = await getDoc(docRef);
@@ -707,9 +675,6 @@ app.get('/user_details', async (req, res) => {
 //     console.log("No such document!");
 // }
 // Start the server
-
-
-
 app.listen(port, () => {
     console.log(`Server is running on port: ${port}`);
 })
