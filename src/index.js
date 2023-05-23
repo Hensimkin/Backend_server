@@ -255,9 +255,10 @@ app.post('/post_approve', async (req, res) => {
         fullName = Object.keys(req.body)[0];
         console.log(fullName);
 
+
         const user = {
             mail: mail,
-            password: pass
+            password: pass,
         };
 
         const adduser = {
@@ -509,7 +510,8 @@ app.post('/follow', async (req, res) => {
         const newFollow = new Follower(getAuth().currentUser.uid, req.body);
         await addDoc(collection(db, 'followers'), newFollow);
         console.log('Post data saved:', newFollow.toString());
-    }catch (e){}
+        //need to edit catch -> for different cases.
+    }catch (e){console.log("Can't follow this user", newFollow.toString());}
 });
 
 
@@ -544,6 +546,41 @@ app.post('/following', async (req, res) => {
 });
 
 
+class Save{
+    constructor(uid, pid) {
+        this.uid = uid;
+        this.pid = pid;
+    }
+    toString(){return `${this.uid} saved ${this.pid}`;}
+}
+
+// showing the saved list for the user
+app.post('/saved', async (req, res) => {
+    auth = getAuth();
+    const userId = auth.currentUser.uid // Assuming you have middleware to authenticate the user and populate `req.user`
+    try {
+        const querySnapshot = await getDocs(query(collection(db, 'saves'), where('uid', '==', userId)));
+        const saved = querySnapshot.docs.map((doc) => doc.data());
+
+        res.json(saved);
+    } catch (error) {
+        console.error('Error retrieving saved:', error);
+        res.status(500).send('An error occurred while retrieving saved list');
+    }
+});
+
+
+app.post('/save', async (req, res) => {
+    try{
+        const newSave = new Save(getAuth().currentUser.uid, req.body);
+        await addDoc(collection(db, 'saves'), newSave);
+        console.log('Post data saved:', newSave.toString());
+        //need to edit catch -> for different cases.
+    }catch (e){console.log("Can't save this post", newSave.toString());}
+
+});
+
+
 
 
 
@@ -565,6 +602,8 @@ app.post('/signOut', async (req, res) => {
         res.status(500).send('An error occurred while signing out');
     }
 });
+
+
 app.get('/user_listings', async (req, res) => {
     auth = getAuth();
     const userId = auth.currentUser.uid // Assuming you have middleware to authenticate the user and populate `req.user`
@@ -579,11 +618,6 @@ app.get('/user_listings', async (req, res) => {
         res.status(500).send('An error occurred while retrieving user listings');
     }
 });
-
-
-
-
-
 
 app.get('/home_listings', async (req, res) => {
     auth = getAuth();
