@@ -3,12 +3,11 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs,where,query } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs,where,query, updateDoc } from "firebase/firestore";
 import { firebaseConfig } from './config/firebase-config.js';
 import { createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword,
     fetchSignInMethodsForEmail,sendEmailVerification, sendPasswordResetEmail, setPersistence, browserLocalPersistence  } from 'firebase/auth'
 import multer from 'multer';
-
 
 // Set up the server
 const port = process.env.PORT || 5000;
@@ -435,16 +434,59 @@ app.post('/post_all', async (req, res) => {
 
 
 // Profile
+
 app.post('/edit_name', async (req, res) => {
     const {FullName} = req.body;
     console.log(FullName);
-    res.send("Name changed");
+    try {
+        const userQuery = query(collection(db, 'users'), where('uid', '==', getAuth().currentUser.uid));
+        const userSnapshot = await getDocs(userQuery);
+        const userDoc = userSnapshot.docs[0]; // Assuming there is only one matching user document
+
+        const updatedUserData = {
+            mail: userDoc.data().mail,
+            name: FullName,
+            uid: userDoc.data().uid,
+            phone: userDoc.data().phone,
+        };
+
+        await updateDoc(doc(db, 'users', userDoc.id), updatedUserData);
+
+        console.log('name changed');
+        console.log(updatedUserData.name);
+        res.send('Name has changed');
+    } catch (error) {
+        console.log(error);
+        console.log('name unchanmged');
+        res.send('name unchanged');
+    }
 });
 
 app.post('/edit_phone_number', async (req, res) => {
-    const {PhoneNumber} = req.body;
+    const { PhoneNumber } = req.body;
     console.log(PhoneNumber);
-    res.send("Phone number changed");
+    try {
+        const userQuery = query(collection(db, 'users'), where('uid', '==', getAuth().currentUser.uid));
+        const userSnapshot = await getDocs(userQuery);
+        const userDoc = userSnapshot.docs[0]; // Assuming there is only one matching user document
+
+        const updatedUserData = {
+            mail: userDoc.data().mail,
+            name: userDoc.data().name,
+            uid: userDoc.data().uid,
+            phone: PhoneNumber,
+        };
+
+        await updateDoc(doc(db, 'users', userDoc.id), updatedUserData);
+
+        console.log('Phone number changed');
+        console.log(updatedUserData.phone);
+        res.send('Phone number changed');
+    } catch (error) {
+        console.log(error);
+        console.log('Phone number unchanged');
+        res.send('Phone number unchanged');
+    }
 });
 
 
@@ -692,3 +734,8 @@ app.get('/User/:uid', async (req, res) => {
 app.listen(port, () => {
     console.log(`Server is running on port: ${port}`);
 })
+
+
+
+
+
