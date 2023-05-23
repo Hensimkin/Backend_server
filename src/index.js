@@ -548,14 +548,45 @@ class Follower {
         return this.follower + ' Started Following '+ this.followed
     }
 };
+
+
 app.post('/follow', async (req, res) => {
-    try{
-        const newFollow = new Follower(getAuth().currentUser.uid, req.body);
-        await addDoc(collection(db, 'followers'), newFollow);
-        console.log('Post data saved:', newFollow.toString());
-        //need to edit catch -> for different cases.
-    }catch (e){console.log("Can't follow this user", newFollow.toString());}
+    const followed_uid = req.body['uid'];
+
+    try {
+        const userQuery = query(collection(db, 'users'), where('uid', '==', getAuth().currentUser.uid));
+        const userSnapshot = await getDocs(userQuery);
+        let userDoc = userSnapshot.docs[0]; // Assuming there is only one matching user document
+
+        // Update the user's following list
+        const updatedFollowing = [...userDoc.data().following, followed_uid];
+        const updatedUserData = {
+            ...userDoc.data(),
+            following: updatedFollowing,
+        };
+
+        await updateDoc(doc(db, 'users', userDoc.id), updatedUserData);
+
+        // Update the followed user's followers list
+        const userQuery2 = query(collection(db, 'users'), where('uid', '==', followed_uid));
+        const userSnapshot2 = await getDocs(userQuery2);
+        let userDoc2 = userSnapshot2.docs[0]; // Assuming there is only one matching user document
+
+        const updatedFollowers = [...userDoc2.data().followers, getAuth().currentUser.uid];
+        const updatedUserData2 = {
+            ...userDoc2.data(),
+            followers: updatedFollowers,
+        };
+
+        await updateDoc(doc(db, 'users', userDoc2.id), updatedUserData2);
+
+        res.send('yes');
+    } catch (error) {
+        console.log(error);
+        res.send('no');
+    }
 });
+
 
 
 // show the followers list
@@ -710,7 +741,6 @@ app.get('/user_details', async (req, res) => {
 
 app.get('/User/:uid', async (req, res) => {
     const { uid } = req.params; // Use req.params.uid to access the uid value
-    console.log({ uid });
     try {
         const querySnapshot = await getDocs(query(collection(db, 'listings'), where('userid', '==', uid)));
         const listings = querySnapshot.docs.map((doc) => doc.data());
