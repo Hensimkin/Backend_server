@@ -3,7 +3,7 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs,where,query } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, where, query, deleteDoc } from "firebase/firestore";
 import { firebaseConfig } from './config/firebase-config.js';
 import { createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword,
     fetchSignInMethodsForEmail,sendEmailVerification, sendPasswordResetEmail, setPersistence, browserLocalPersistence  } from 'firebase/auth'
@@ -412,7 +412,7 @@ app.post('/post_all', async (req, res) => {
                 category: category,
                 description: description,
                 userid: userId,
-                phone: phone // Add the 'phone' field to the listing data
+                phone: phone, // Add the 'phone' field to the listing data
             };
 
             // Save the post data to Firestore
@@ -458,7 +458,6 @@ class User {
         return this.name + ', ' + this.mail + ', ' + this.phone;
     }
 }
-
 // Firestore data converter
 const userConverter = {
     toFirestore: (user) => {
@@ -490,6 +489,8 @@ app.post('/edit_profile', async (req, res) => {
 app.post('/unfollow', async (req, res) => {
     const {unfollowedUser} = req.body;
     console.log(unfollowedUser);
+    const unfollow = getDoc(query(collection(db, 'followers')).where('follower-uid', '==', getAuth().currentUser.uid).where('followed-uid', '==', req.body));
+    deleteDoc(unfollow);
     res.send("Following removed");
 });
 
