@@ -12,7 +12,9 @@ import {
 } from 'firebase/auth';
 import multer from 'multer';
 import { firebaseConfig } from './config/firebase-config.js';
-
+import fs from 'fs';
+import { getStorage, ref, uploadBytes,getDownloadURL } from "firebase/storage";
+const fstorage = getStorage();
 // Set up the server
 const port = process.env.PORT || 5000;
 const app = express();
@@ -360,13 +362,21 @@ app.get('/get_stored_data', (req, res) => {
   res.json(storedData);
 });
 
-app.post('/post_all', async (req, res) => {
-  const {
-    title, price, category, description,
-  } = req.body;
-  // const pictures = req.files.map(file => file.filename);
-  auth = getAuth();
+app.post('/post_all', upload.array('pictures'),async (req, res) => {
+  const { title, price, category, description } = req.body;
+  const pictures = req.files;
 
+  // Upload pictures to Firebase Storage
+  const pictureUrls = [];
+  for (const picture of pictures) {
+    const storageRef = ref(fstorage, `/images/${picture.originalname}`);
+    const data = await fs.promises.readFile(picture.path);
+    const snapshot = await uploadBytes(storageRef, data);
+    const downloadUrl = await getDownloadURL(snapshot.ref);
+    pictureUrls.push(downloadUrl);
+  }
+
+  auth = getAuth();
   const userId = auth.currentUser.uid;
 
   try {
@@ -378,23 +388,20 @@ app.post('/post_all', async (req, res) => {
       const userData = userSnapshot.docs[0].data();
       const { phone } = userData;
       const { name } = userData;
-      const listringData = {
+      const listingData = {
         title,
         price,
         category,
         description,
         userid: userId,
-        phone, // Add the 'phone' field to the listing data
+        phone,
         name,
+        pictures: pictureUrls, // Store the picture URLs in the listing data
       };
 
       // Save the post data to Firestore
-      await addDoc(collection(db, 'listings'), listringData);
-      console.log('Post data saved:', listringData);
-
-      // You can also save the pictures to storage and associate them with the post if needed
-      // const pictureUrls = req.files.map(file => file.filename);
-      // Save the picture URLs to Firestore or storage and associate them with the post
+      await addDoc(collection(db, 'listings'), listingData);
+      console.log('Post data saved:', listingData);
 
       res.send('Data received');
     } else {
@@ -405,6 +412,7 @@ app.post('/post_all', async (req, res) => {
     res.status(500).send('An error occurred while saving the post data');
   }
 });
+
 
 // Profile
 
