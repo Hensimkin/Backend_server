@@ -9,6 +9,7 @@ import {
 import {
   createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword,
   fetchSignInMethodsForEmail, sendEmailVerification, sendPasswordResetEmail, setPersistence, browserLocalPersistence,
+  updatePassword
 } from 'firebase/auth';
 import multer from 'multer';
 import { firebaseConfig } from './config/firebase-config.js';
@@ -832,6 +833,19 @@ app.get('/User/:uid', async (req, res) => {
     res.status(500).send('An error occurred while retrieving user listings');
   }
 });
+
+
+app.post('change_password', async (req, res) => {
+  var user = getAuth().currentUser;
+  var new_password = req.body;
+  user.updatePassword(new_password).then(() => {
+    console.log('password has changed successfully ');}).catch((e) =>{
+    console.log('error ' + e.data);
+  });
+});
+
+
+
 
 // Start the server
 app.listen(port, () => {
