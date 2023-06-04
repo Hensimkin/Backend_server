@@ -15,7 +15,13 @@ import multer from 'multer';
 import { firebaseConfig } from './config/firebase-config.js';
 import fs from 'fs';
 import { getStorage, ref, uploadBytes,getDownloadURL } from "firebase/storage";
+import admin from 'firebase-admin';
+//const serviceAccount = require("src/config/server-firebase-keys.json"); // Path to your service account key file
+admin.initializeApp({
+  credential: admin.credential.cert("src/config/server-firebase-keys.json"),
+});
 const fstorage = getStorage();
+
 // Set up the server
 const port = process.env.PORT || 5000;
 const app = express();
@@ -835,14 +841,53 @@ app.get('/User/:uid', async (req, res) => {
 });
 
 
-app.post('change_password', async (req, res) => {
-  var user = getAuth().currentUser;
-  var new_password = req.body;
-  user.updatePassword(new_password).then(() => {
-    console.log('password has changed successfully ');}).catch((e) =>{
-    console.log('error ' + e.data);
-  });
+app.post('/change_password', async (req, res) => {
+  try {
+    const user = getAuth().currentUser;
+    const new_password = req.body.newPassword;
+
+    // Compare the new password with the user's current password
+    const isPasswordMatch = await comparePassword(user, req.body.currentPassword);
+
+    if (isPasswordMatch) {
+      // Passwords match, update the password
+      await updatePassword(user, new_password);
+      console.log('Password has changed successfully');
+      res.sendStatus(200);
+    } else {
+      // Passwords do not match
+      console.log('Incorrect current password');
+      res.status(400).json({ error: 'Incorrect current password' });
+    }
+  } catch (error) {
+    console.log('Error:', error);
+    res.status(500).json({ error: 'Failed to change password' });
+  }
 });
+
+
+
+async function comparePassword(user, enteredPassword) {
+  const email = user.email;
+  const password = enteredPassword;
+
+  try {
+    // Sign in the user with their email and password
+    await signInWithEmailAndPassword(getAuth(), email, password);
+    console.log("Passwords match!");
+
+    // Passwords match, you can proceed with further actions
+    return true;
+  } catch (error) {
+    console.log("Passwords do not match.");
+    // Passwords do not match, handle accordingly
+    return false;
+  }
+}
+
+
+
+
 
 
 
