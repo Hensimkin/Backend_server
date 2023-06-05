@@ -9,7 +9,7 @@ import {
 import {
   createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword,
   fetchSignInMethodsForEmail, sendEmailVerification, sendPasswordResetEmail, setPersistence, browserLocalPersistence,
-  updatePassword
+  updatePassword, reauthenticateWithCredential, EmailAuthProvider
 } from 'firebase/auth';
 import multer from 'multer';
 import { firebaseConfig } from './config/firebase-config.js';
@@ -511,12 +511,24 @@ app.post('/edit_profile', async (req, res) => {
 });
 
 app.post('/unfollow', async (req, res) => {
-  const followedUid = req.body.unfollowedUser.id;
+  console.log('Entered unfollow')
+  const unfollowedDocumentId = req.body.unfollowedUser.id
   const currentUserUid = auth.currentUser.uid;
-  try {
+  console.log(currentUserUid)
 
+  const unfollowedUserDoc = await getDoc(doc(db, 'users', unfollowedDocumentId));
+  if (!unfollowedUserDoc.exists()) {
+    res.status(404).send('Unfollowed user not found');
+    return;
+  }
+
+  const unfollowedUserData = unfollowedUserDoc.data();
+  const unfollowedUserUid = unfollowedUserData.uid;
+
+  try {
     // Remove the unfollowed user from the current user's following list
     const userQuery = query(collection(db, 'users'), where('uid', '==', currentUserUid));
+    console.log('enter 1')
     const userSnapshot = await getDocs(userQuery);
     const userDocs = userSnapshot.docs;
     if (userDocs.length === 0) {
@@ -526,7 +538,7 @@ app.post('/unfollow', async (req, res) => {
 
     const userDoc = userDocs[0];
     const userData = userDoc.data();
-    const updatedFollowing = userData.following.filter((uid) => uid !== followedUid);
+    const updatedFollowing = userData.following.filter((uid) => uid !== unfollowedUserUid);
     const updatedUserData = {
       ...userData,
       following: updatedFollowing.length > 0 ? updatedFollowing : [], // Check if the array is empty
@@ -535,7 +547,7 @@ app.post('/unfollow', async (req, res) => {
     await updateDoc(doc(db, 'users', userDoc.id), updatedUserData);
 
     // Remove the current user from the unfollowed user's followers list
-    const unfollowedUserQuery = query(collection(db, 'users'), where('uid', '==', followedUid));
+    const unfollowedUserQuery = query(collection(db, 'users'), where('uid', '==', unfollowedUserUid));
     const unfollowedUserSnapshot = await getDocs(unfollowedUserQuery);
     const unfollowedUserDocs = unfollowedUserSnapshot.docs;
     if (unfollowedUserDocs.length === 0) {
@@ -559,6 +571,7 @@ app.post('/unfollow', async (req, res) => {
     res.status(500).send('Failed to unfollow');
   }
 });
+
 
 class Follower {
   constructor(uid1, uid2) {
@@ -846,6 +859,7 @@ app.post('/change_password', async (req, res) => {
     const user = getAuth().currentUser;
     const new_password = req.body.newPassword;
     const valid_password = req.body.validNewPassword;
+
     console.log("new pass:", new_password);
     console.log("valid pass:", valid_password);
 
@@ -856,14 +870,24 @@ app.post('/change_password', async (req, res) => {
 
     if (new_password !== valid_password) {
       res.send('Passwords not matched');
+      return;
     }
+
+    const credential = EmailAuthProvider.credential(user.email, req.body.currentPassword);
 
     const isPasswordMatch = await comparePassword(user, req.body.currentPassword);
     if (isPasswordMatch) {
-      // Passwords match, update the password
-      await updatePassword(user, new_password);
-      console.log('Password has been changed successfully');
-      res.send('Password has been changed successfully');
+      reauthenticateWithCredential(user, credential)
+        .then(async () => {
+          // Passwords match, update the password
+          await updatePassword(user, new_password);
+          console.log('Password has been changed successfully');
+          res.send('Password has been changed successfully');
+        })
+        .catch((error) => {
+          console.log('Reauthentication failed:', error);
+          res.status(400).json({ error: 'Reauthentication failed' });
+        });
     } else {
       console.log('Incorrect current password');
       res.status(400).json({ error: 'Incorrect current password' });
@@ -873,7 +897,6 @@ app.post('/change_password', async (req, res) => {
     res.status(500).json({ error: 'Failed to change password' });
   }
 });
-
 
 
 
@@ -894,12 +917,6 @@ async function comparePassword(user, enteredPassword) {
     return false;
   }
 }
-
-
-
-
-
-
 
 
 // Start the server
