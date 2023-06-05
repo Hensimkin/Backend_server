@@ -845,33 +845,35 @@ app.post('/change_password', async (req, res) => {
   try {
     const user = getAuth().currentUser;
     const new_password = req.body.newPassword;
-    const valid_password = req.body.ValidNewPassword;
+    const valid_password = req.body.validNewPassword;
+    console.log("new pass:", new_password);
+    console.log("valid pass:", valid_password);
 
-    // Compare the new password with the user's current password
-    if(new_password == valid_password) {
-      const isPasswordMatch = await comparePassword(user, req.body.currentPassword);
-      if (isPasswordMatch) {
-        // Passwords match, update the password
-        await updatePassword(user, new_password);
-        console.log('Password has changed successfully');
-        res.sendStatus(200);
-      } else {
-        // Passwords do not match
-        console.log('Incorrect current password');
-        res.status(400)
-          .json({ error: 'Incorrect current password' });
-      }
-    } else {
-      console.log('New password not match to the validation');
-      res.status(400)
-        .json({ error: 'New password not match to the validation' });
+    if (new_password.length < 8 || !new_password.match(/[a-zA-Z]/)) {
+      res.send('Password must be at least 8 characters long and contain at least one letter');
+      return;
     }
 
+    if (new_password !== valid_password) {
+      res.send('Passwords not matched');
+    }
+
+    const isPasswordMatch = await comparePassword(user, req.body.currentPassword);
+    if (isPasswordMatch) {
+      // Passwords match, update the password
+      await updatePassword(user, new_password);
+      console.log('Password has been changed successfully');
+      res.send('Password has been changed successfully');
+    } else {
+      console.log('Incorrect current password');
+      res.status(400).json({ error: 'Incorrect current password' });
+    }
   } catch (error) {
     console.log('Error:', error);
     res.status(500).json({ error: 'Failed to change password' });
   }
 });
+
 
 
 
