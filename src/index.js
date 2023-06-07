@@ -428,11 +428,16 @@ app.post('/post_all', upload.array('pictures'),async (req, res) => {
 app.post('/edit_name', async (req, res) => {
   const { FullName } = req.body;
   console.log(FullName);
+
   try {
     const userQuery = query(collection(db, 'users'), where('uid', '==', getAuth().currentUser.uid));
     const userSnapshot = await getDocs(userQuery);
     const userDoc = userSnapshot.docs[0]; // Assuming there is only one matching user document
-
+    if (userDoc.data().name === FullName){
+      console.log('name unchanged');
+      res.send('New name similar to the current name');
+      return;
+    }
     const updatedUserData = {
       mail: userDoc.data().mail,
       name: FullName,
@@ -447,7 +452,7 @@ app.post('/edit_name', async (req, res) => {
     res.send('Name has changed');
   } catch (error) {
     console.log(error);
-    console.log('name unchanmged');
+    console.log('name unchanged');
     res.send('name unchanged');
   }
 });
@@ -459,7 +464,11 @@ app.post('/edit_phone_number', async (req, res) => {
     const userQuery = query(collection(db, 'users'), where('uid', '==', getAuth().currentUser.uid));
     const userSnapshot = await getDocs(userQuery);
     const userDoc = userSnapshot.docs[0]; // Assuming there is only one matching user document
-
+    if (userDoc.data().phone === PhoneNumber){
+      console.log('phone unchanged');
+      res.send('New phone number similar to the current name');
+      return;
+    }
     const updatedUserData = {
       mail: userDoc.data().mail,
       name: userDoc.data().name,
@@ -680,7 +689,7 @@ app.get('/following', async (req, res) => {
     const followingSnapshot = await getDocs(followingQuery);
 
     const followingList = followingSnapshot.docs.map((doc) => ({
-      id: doc.id,
+      id: doc.data().uid,
       username: doc.data().username,
       name: doc.data().name, // Add the name property
     }));
