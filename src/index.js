@@ -19,6 +19,8 @@ import admin from 'firebase-admin';
 //const serviceAccount = require("src/config/server-firebase-keys.json"); // Path to your service account key file
 admin.initializeApp({
   credential: admin.credential.cert("src/config/server-firebase-keys.json"),
+  projectId: 'server-firebase-14dd9', // Replace with your actual project ID
+
 });
 const fstorage = getStorage();
 
@@ -915,6 +917,79 @@ async function comparePassword(user, enteredPassword) {
     console.log("Passwords do not match.");
     // Passwords do not match, handle accordingly
     return false;
+  }
+}
+
+app.post('/delete_account', async (req, res) => {
+  try {
+    const user = getAuth().currentUser;
+    const password = req.body.password;
+
+    const isPasswordMatch = await comparePassword(user, password);
+    if (isPasswordMatch) {
+      const credential = EmailAuthProvider.credential(user.email, password);
+
+      reauthenticateWithCredential(user, credential)
+        .then(() => {
+          // Password and reauthentication successful, delete the user
+          deleteAccount(user)
+            .then(() => {
+              console.log('User account has been deleted successfully');
+              res.send('User account has been deleted successfully');
+            })
+            .catch((error) => {
+              console.log('Failed to delete user account:', error);
+              res.status(500).json({ error: 'Failed to delete user account' });
+            });
+        })
+        .catch((error) => {
+          console.log('Reauthentication failed:', error);
+          res.status(400).json({ error: 'Reauthentication failed' });
+        });
+    } else {
+      console.log('Incorrect password');
+      res.status(400).json({ error: 'Incorrect password' });
+    }
+  } catch (error) {
+    console.log('Error:', error);
+    res.status(500).json({ error: 'Failed to delete user account' });
+  }
+});
+
+
+const deleteUser = async (uid) => {
+  try {
+    const usersCollection = admin.firestore().collection('users');
+    const querySnapshot = await usersCollection.where('uid', '==', uid).get();
+
+    if (querySnapshot.empty) {
+      console.log('User document not found');
+      return;
+    }
+
+    const userDoc = querySnapshot.docs[0];
+    await userDoc.ref.delete();
+    console.log('User document deleted successfully');
+  } catch (error) {
+    console.error('Failed to delete user document:', error);
+    throw error;
+  }
+};
+
+
+async function deleteAccount(user) {
+  try {
+    // Get the user's UID
+    const uid = user.uid;
+    await deleteUser(uid);
+    // Delete the user reference from the "users" collection
+    // Delete the user account
+    await user.delete();
+
+    console.log('User account and reference deleted successfully');
+  } catch (error) {
+    console.log('Failed to delete user account:', error);
+    throw error;
   }
 }
 
