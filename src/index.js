@@ -533,24 +533,20 @@ app.post('/edit_profile', async (req, res) => {
 });
 
 app.post('/unfollow', async (req, res) => {
-  console.log('Entered unfollow')
-  const unfollowedDocumentId = req.body.unfollowedUser.id
+  console.log(req.body)
+  const unfollowedDocumentId = req.body.unfollowedUser.id;
   const currentUserUid = auth.currentUser.uid;
-  console.log(currentUserUid)
+  const usersCollection = admin.firestore().collection('users');
+  const unfollowSnapshot = await usersCollection.where('uid', '==', unfollowedDocumentId).get();
 
-  const unfollowedUserDoc = await getDoc(doc(db, 'users', unfollowedDocumentId));
-  if (!unfollowedUserDoc.exists()) {
-    res.status(404).send('Unfollowed user not found');
-    return;
-  }
-
+  const unfollowedUserDoc = unfollowSnapshot.docs[0];
   const unfollowedUserData = unfollowedUserDoc.data();
   const unfollowedUserUid = unfollowedUserData.uid;
+
 
   try {
     // Remove the unfollowed user from the current user's following list
     const userQuery = query(collection(db, 'users'), where('uid', '==', currentUserUid));
-    console.log('enter 1')
     const userSnapshot = await getDocs(userQuery);
     const userDocs = userSnapshot.docs;
     if (userDocs.length === 0) {
@@ -673,7 +669,7 @@ app.get('/followers', async (req, res) => {
     const followersSnapshot = await getDocs(followersQuery);
 
     const followersList = followersSnapshot.docs.map((doc) => ({
-      id: doc.id,
+      id: doc.data().uid,
       username: doc.data().username,
       name: doc.data().name,
     }));
@@ -1078,6 +1074,51 @@ app.post('/likeListing', async (req, res) => {
   } catch (error) {
     console.error('Error updating listing likes:', error);
     res.sendStatus(500);
+  }
+});
+
+app.get('/listing/:listingId', async (req, res) => {
+  const listingId = req.params.listingId;
+
+  try {
+    const docRef = doc(db, 'listings', listingId);
+    const docSnapshot = await getDoc(docRef);
+
+    if (docSnapshot.exists()) {
+      const listingData = docSnapshot.data();
+      res.json(listingData);
+    } else {
+      res.status(404).send('Listing not found');
+    }
+  } catch (error) {
+    console.error('Error retrieving listing:', error);
+    res.status(500).send('An error occurred while retrieving the listing');
+  }
+});
+
+app.post('/edit_listing/:listingId', async (req, res) => {
+  const listingId = req.params.listingId;
+  const { title, price, category, description, pictures } = req.body;
+
+  try {
+    const docRef = doc(db, 'listings', listingId);
+    const docSnapshot = await getDoc(docRef);
+
+    if (docSnapshot.exists()) {
+      await updateDoc(docRef, {
+        title,
+        price,
+        category,
+        description,
+        pictures,
+      });
+      res.send('Listing updated successfully');
+    } else {
+      res.status(404).send('Listing not found');
+    }
+  } catch (error) {
+    console.error('Error updating listing:', error);
+    res.status(500).send('An error occurred while updating the listing');
   }
 });
 
