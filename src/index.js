@@ -406,11 +406,21 @@ app.post('/post_all', upload.array('pictures'),async (req, res) => {
         phone,
         name,
         pictures: pictureUrls, // Store the picture URLs in the listing data
+        likes:0,
       };
 
       // Save the post data to Firestore
-      await addDoc(collection(db, 'listings'), listingData);
+      const listingRef = await addDoc(collection(db, 'listings'), listingData);
+      const listingId = listingRef.id;
       console.log('Post data saved:', listingData);
+      // Update the listing data with the listing ID
+      const updatedListingData = {
+        ...listingData,
+        id: listingId,
+      };
+
+      // Update the listing document with the ID field
+      await setDoc(doc(db, 'listings', listingId), updatedListingData);
 
       res.send('Data received');
     } else {
@@ -1001,6 +1011,39 @@ async function deleteAccount(user) {
     throw error;
   }
 }
+
+app.post('/likeListing', async (req, res) => {
+  try {
+    const { listing, isLiked} = req.body;
+    const listingId = listing.id; // Assuming the listing object has an 'id' field
+    // Get the reference to the specific listing document
+    const listingRef = doc(db, 'listings', listingId);
+
+    // Get the current likes count from the document
+    const listingSnapshot = await getDoc(listingRef);
+    const currentLikes = listingSnapshot.data().likes;
+
+    if(isLiked)
+    {
+      // Update the 'likes' field by adding 1
+      await updateDoc(listingRef, {
+        likes: currentLikes + 1,
+      });
+    }
+    else {
+      await updateDoc(listingRef, {
+        likes: currentLikes - 1,
+      });
+
+    }
+
+
+    res.sendStatus(200);
+  } catch (error) {
+    console.error('Error updating listing likes:', error);
+    res.sendStatus(500);
+  }
+});
 
 
 // Start the server
