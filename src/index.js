@@ -261,6 +261,7 @@ app.post('/post_approve', async (req, res) => {
       saved: [],
       followers: [],
       following: [],
+      savedListingForLater:[],
     };
     try {
       const docRef = await createUserWithEmailAndPassword(auth, user.mail, user.password);
@@ -748,8 +749,8 @@ class Save {
   toString() { return `${this.uid} saved ${this.pid}`; }
 }
 
-// showing the saved list for the user
-app.post('/saved', async (req, res) => {
+//showing the saved list for the user
+app.post('/returnSavedListing', async (req, res) => {
   try {
     const authId = auth.currentUser.uid;
     const userQuerySnapshot = await getDocs(query(collection(db, 'users'), where('uid', '==', authId)));
@@ -759,50 +760,85 @@ app.post('/saved', async (req, res) => {
       res.sendStatus(404);
       return;
     }
-
     const userDoc = userQuerySnapshot.docs[0];
-    const savedListings = userDoc.data().saved || [];
+    const savedListingsId = userDoc.data().savedListingForLater || [];
+    let listings = [];
+    for (const listingId of savedListingsId) {
+      const listingQuerySnapshot = await getDocs(query(collection(db, 'listings'), where('id', '==', listingId)));
+      if (!listingQuerySnapshot.empty) {
+        const listingDoc = listingQuerySnapshot.docs[0];
+        const listingData = listingDoc.data();
+        listings.push(listingData);
+      }
+    }
 
-    res.json(savedListings);
+    res.json(listings);
   } catch (error) {
     console.error('Error retrieving saved listings:', error);
     res.status(500).send('An error occurred while retrieving saved listings');
   }
 });
 
-app.post('/save', async (req, res) => {
+
+app.post('/getListingDetails', async (req, res) => {
   try {
-    const { listing } = req.body;
-    console.log('listing:', listing);
+    const { listingIds } = req.body;
+
     const authId = auth.currentUser.uid;
-    console.log('Authenticated User ID:', authId);
     const userQuerySnapshot = await getDocs(query(collection(db, 'users'), where('uid', '==', authId)));
-    console.log('User ID the first:', userQuerySnapshot);
 
     if (userQuerySnapshot.empty) {
       console.error('User document not found');
       res.sendStatus(404);
       return;
     }
+    const listingDetails = await getDocs(query(collection(db, 'listings'), where('id', '==', listingIds)));
+    console.log(listingDetails)
+    res.json(listingDetails);
+  } catch (error) {
+    console.error('Error fetching listing details:', error);
+    res.status(500).send('An error occurred while fetching listing details');
+  }
+});
 
+
+app.post('/saveListing', async (req, res) => {
+  try {
+    const { listingId, deleteOrSave } = req.body;
+    console.log(listingId, deleteOrSave);
+
+    const authId = auth.currentUser.uid;
+    const userQuerySnapshot = await getDocs(query(collection(db, 'users'), where('uid', '==', authId)));
+    if (userQuerySnapshot.empty) {
+      console.error('User document not found');
+      res.sendStatus(404);
+      return;
+    }
     const userDoc = userQuerySnapshot.docs[0];
-    const userId = userDoc.id;
-    console.log('User ID:', userId);
-    const savedListings = userDoc.data().saved || [];
 
-    // Add the listing to the savedListings array
-    savedListings.push(listing);
+    // Get the existing saved listings array or create a new one
+    let savedListingForLater = userDoc.data().savedListingForLater || [];
 
-    // Update the user document with the updated savedListings array
-    await updateDoc(doc(db, 'users', userId), { saved: savedListings });
+    if (deleteOrSave === 'delete') {
+      // Delete the listingId from the savedListingForLater array
+      savedListingForLater = savedListingForLater.filter(id => id !== listingId);
+    } else if (deleteOrSave === 'save') {
+      // Add the listingId to the savedListingForLater array if it doesn't exist
+      if (!savedListingForLater.includes(listingId)) {
+        savedListingForLater.push(listingId);
+      }
+    }
 
-    console.log('Listing saved for later in user with ID:', userId);
+    const userRef = doc(db, 'users', userDoc.id); // Create a reference to the user document
+    await updateDoc(userRef, { savedListingForLater });
     res.sendStatus(200);
   } catch (error) {
-    console.error('Error saving listing:', error);
+    console.error('Error saving/deleting listing:', error);
     res.sendStatus(500);
   }
 });
+
+
 
 app.post('/signOut', async (req, res) => {
   const auth = getAuth();
