@@ -26,6 +26,7 @@ const fstorage = getStorage();
 
 // Set up the server
 const port = process.env.PORT || 5000;
+const serverURL = "backend-server-qdnc.onrender.com";
 const app = express();
 app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -1125,5 +1126,5 @@ app.post('/edit_listing/:listingId', async (req, res) => {
 
 // Start the server
 app.listen(port, () => {
-  console.log(`Server is running on port: ${port}`);
+  console.log(`Server is running on: ${serverURL}:${port}`);
 });
