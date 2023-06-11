@@ -646,11 +646,11 @@ app.post('/follow', async (req, res) => {
       updatedFollowers.push(currentUserUid);
     }
 
-    // const notificationData = {
-    //   currentUserUid,
-    // };
+    const notificationData = {
+      currentUserUid,
+    };
 
-    updatedNotifications.push(query(collection(db, 'users'), where('uid', '==', currentUserUid)));
+    updatedNotifications.push(notificationData);
 
     const updatedFollowedUserData = { ...followedUserData, followers: updatedFollowers, notifications: updatedNotifications };
 
