@@ -1166,3 +1166,22 @@ app.post('/get_uid', async (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running on: ${serverURL}:${port}`);
 });
+
+
+app.get('/get_notifications', async (req, res) => {
+  try {
+    const currentUserUid = getAuth().currentUser.uid;
+
+    const userQuery = query(collection(db, 'users'), where('uid', '==', currentUserUid));
+    const userSnapshot = await getDocs(userQuery);
+    const userDoc = userSnapshot.docs[0];
+
+    const notificationsList = userDoc.data().notifications;
+
+    res.json(notificationsList);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send('Failed to fetch notifications list');
+  }
+
+});
