@@ -1123,6 +1123,40 @@ app.post('/edit_listing/:listingId', async (req, res) => {
   }
 });
 
+app.post('/delete_listing/:listingId', async (req, res) => {
+  console.log('enter delete');
+  const listingId = req.params.listingId;
+  console.log(listingId);
+  try {
+    await deleteListing(listingId);
+    console.log('Listing deleted successfully');
+    res.send('Listing deleted successfully');
+  } catch (error) {
+    console.error('Failed to delete listing:', error);
+    res.status(500).json({ error: 'Failed to delete listing' });
+  }
+});
+
+
+async function deleteListing(listingId) {
+try {
+  const usersCollection = admin.firestore().collection('listings');
+  const querySnapshot = await usersCollection.where('id', '==', listingId).get();
+
+  if (querySnapshot.empty) {
+    console.log('Listing document not found');
+    return;
+  }
+
+  const listingDoc = querySnapshot.docs[0];
+  await listingDoc.ref.delete();
+  console.log('Listing deleted successfully');
+} catch (error) {
+  console.error('Failed to delete listing:', error);
+  throw error;
+}
+};
+
 
 // Start the server
 app.listen(port, () => {
