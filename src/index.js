@@ -1157,6 +1157,10 @@ try {
 }
 };
 
+app.post('/get_uid', async (req, res) => {
+  const user1 = getAuth().currentUser.uid;
+  res.send(user1);
+});
 
 // Start the server
 app.listen(port, () => {
