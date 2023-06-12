@@ -1251,6 +1251,22 @@ app.post('/get_uid', async (req, res) => {
   res.send(user1);
 });
 
+app.post('/get_total_likes', async (req, res) => {
+  const userId = getAuth().currentUser.uid;
+  const listingQuerySnapshot = await getDocs(query(collection(db, 'listings'), where('userid', '==', userId)));
+
+  let totalLikes = 0;
+  listingQuerySnapshot.forEach((doc) => {
+    const listingData = doc.data();
+    if (listingData.likes) {
+      totalLikes += listingData.likes;
+    }
+  });
+  console.log('total likes',totalLikes);
+  res.send({totalLikes});
+});
+
+
 // Start the server
 app.listen(port, () => {
   console.log(`Server is running on: ${serverURL}:${port}`);
