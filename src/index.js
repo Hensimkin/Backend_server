@@ -651,7 +651,7 @@ app.post('/follow', async (req, res) => {
       currentUserUid,
     };
 
-    updatedNotifications.push(notificationData);
+    updatedNotifications.push(notificationData.currentUserUid);
 
     const updatedFollowedUserData = { ...followedUserData, followers: updatedFollowers, notifications: updatedNotifications };
 
@@ -1016,6 +1016,8 @@ const deleteUser = async (uid) => {
   try {
     const usersCollection = admin.firestore().collection('users');
     const querySnapshot = await usersCollection.where('uid', '==', uid).get();
+    const listingsCollection = admin.firestore().collection('listings');
+    const listingSnapshot = await listingsCollection.where('userid', '==', uid).get();
 
     if (querySnapshot.empty) {
       console.log('User document not found');
@@ -1024,12 +1026,25 @@ const deleteUser = async (uid) => {
 
     const userDoc = querySnapshot.docs[0];
     await userDoc.ref.delete();
-    console.log('User document deleted successfully');
+
+    if (listingSnapshot.empty) {
+      console.log('No listing documents found for the user');
+      return;
+    }
+
+    const deletePromises = [];
+    listingSnapshot.docs.forEach((listingDoc) => {
+      deletePromises.push(listingDoc.ref.delete());
+    });
+
+    await Promise.all(deletePromises);
+    console.log('User document and associated listing documents deleted successfully');
   } catch (error) {
     console.error('Failed to delete user document:', error);
     throw error;
   }
 };
+
 
 
 async function deleteAccount(user) {
