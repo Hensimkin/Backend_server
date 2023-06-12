@@ -1025,25 +1025,42 @@ const deleteUser = async (uid) => {
     }
 
     const userDoc = querySnapshot.docs[0];
+    const userId = userDoc.id;
+
+    // Delete user document
     await userDoc.ref.delete();
 
-    if (listingSnapshot.empty) {
-      console.log('No listing documents found for the user');
-      return;
+    // Delete associated listing documents
+    if (!listingSnapshot.empty) {
+      const deleteListingPromises = listingSnapshot.docs.map((listingDoc) => listingDoc.ref.delete());
+      await Promise.all(deleteListingPromises);
     }
 
-    const deletePromises = [];
-    listingSnapshot.docs.forEach((listingDoc) => {
-      deletePromises.push(listingDoc.ref.delete());
+    // Remove user from followers collection of other users
+    const usersSnapshot = await usersCollection.get();
+
+    const updatePromises = [];
+    usersSnapshot.forEach((userSnapshot) => {
+      const userRef = userSnapshot.ref;
+      const userDocData = userSnapshot.data();
+
+      // Remove user from followers collection
+      if (userDocData.followers && userDocData.followers.includes(uid)) {
+        console.log('enter delete follow');
+        const updatedFollowers = userDocData.followers.filter((follower) => follower !== uid);
+        updatePromises.push(userRef.update({ followers: updatedFollowers }));
+      }
     });
 
-    await Promise.all(deletePromises);
+    await Promise.all(updatePromises);
     console.log('User document and associated listing documents deleted successfully');
   } catch (error) {
     console.error('Failed to delete user document:', error);
     throw error;
   }
 };
+
+
 
 
 
