@@ -606,7 +606,7 @@ class Follower {
 
 app.post('/follow', async (req, res) => {
   const followed_uid = req.body['uid'];
-  const currentUserUid = auth.currentUser.uid
+  const currentUserUid = auth.currentUser.uid;
 
   try {
     const userQuery = query(collection(db, 'users'), where('uid', '==', currentUserUid));
@@ -629,7 +629,7 @@ app.post('/follow', async (req, res) => {
 
     await updateDoc(doc(db, 'users', userDoc.id), updatedUserData);
 
-    // Update the followed user's followers list
+    // Update the followed user's followers list and notifications array
     const followedUserQuery = query(collection(db, 'users'), where('uid', '==', followed_uid));
     const followedUserSnapshot = await getDocs(followedUserQuery);
     const followedUserDocs = followedUserSnapshot.docs;
@@ -641,11 +641,19 @@ app.post('/follow', async (req, res) => {
     const followedUserDoc = followedUserDocs[0];
     const followedUserData = followedUserDoc.data();
     const updatedFollowers = followedUserData.followers || [];
+    const updatedNotifications = followedUserData.notifications || [];
 
     if (!updatedFollowers.includes(currentUserUid)) {
       updatedFollowers.push(currentUserUid);
     }
-    const updatedFollowedUserData = { ...followedUserData, followers: updatedFollowers };
+
+    const notificationData = {
+      currentUserUid,
+    };
+
+    updatedNotifications.push(notificationData);
+
+    const updatedFollowedUserData = { ...followedUserData, followers: updatedFollowers, notifications: updatedNotifications };
 
     await updateDoc(doc(db, 'users', followedUserDoc.id), updatedFollowedUserData);
 
@@ -655,6 +663,7 @@ app.post('/follow', async (req, res) => {
     res.send('Error occurred');
   }
 });
+
 
 // show the followers list
 app.get('/followers', async (req, res) => {
@@ -1213,4 +1222,22 @@ app.post('/get_uid', async (req, res) => {
 // Start the server
 app.listen(port, () => {
   console.log(`Server is running on: ${serverURL}:${port}`);
+});
+
+
+app.get('/get_notifications', async (req, res) => {
+  try {
+    const currentUserUid = getAuth().currentUser.uid;
+
+    const userQuery = query(collection(db, 'users'), where('uid', '==', currentUserUid));
+    const userSnapshot = await getDocs(userQuery);
+    const userDoc = userSnapshot.docs[0];
+
+    const notificationsList = userDoc.data().notifications;
+
+    res.json(notificationsList);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send('Failed to fetch notifications list');
+  }
 });
