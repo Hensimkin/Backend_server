@@ -558,6 +558,7 @@ app.post('/unfollow', async (req, res) => {
 
     const userDoc = userDocs[0];
     const userData = userDoc.data();
+    const userName=userDoc.data().name;
     const updatedFollowing = userData.following.filter((uid) => uid !== unfollowedUserUid);
     const updatedUserData = {
       ...userData,
@@ -584,6 +585,24 @@ app.post('/unfollow', async (req, res) => {
     };
 
     await updateDoc(doc(db, 'users', unfollowedUserDoc.id), updatedUnfollowedUserData);
+
+    console.log(currentUserUid);
+    const not = `${userName} started following you`;
+    console.log(not);
+    const unfollowedUserNotifications = unfollowedUserData.notifications || [];
+    const updatedNotifications = unfollowedUserNotifications.filter(notification => notification !== not);
+
+    await updateDoc(doc(db, 'users', unfollowedUserDoc.id), { notifications: updatedNotifications });
+
+
+
+
+
+
+
+
+
+
 
     res.send('Unfollow successful');
   } catch (error) {
@@ -660,6 +679,10 @@ app.post('/follow', async (req, res) => {
     const followingUserName = followingUserData.name; // Assuming the user's name is stored in the 'name' field
 
     const notificationData = `${followingUserName} started following you`;
+
+    if (updatedNotifications.length === 4) {
+      updatedNotifications.splice(0, 1); // Remove the notification at 0th position
+    }
 
     updatedNotifications.push(notificationData);
 
@@ -1126,15 +1149,40 @@ app.post('/likeListing', async (req, res) => {
       if (!LikedListing.includes(listingId)) {
         LikedListing.push(listingId);
       }
+      const not = `${userName} liked your ${listingTitle}`;
+      console.log(not);
+      console.log(listinguserid);
+      const userQuery = query(collection(db, 'users'), where('uid', '==', listinguserid));
+      // console.log(listinguserid);
+      const userQuerySnapshot2 = await getDocs(userQuery);
+      const userDoc2 = userQuerySnapshot2.docs[0];
+      const notific = userDoc2.data().notifications || [];
 
+      if (notific.length === 4) {
+        notific.splice(0, 1); // Remove the notification at 0th position
+      }
+
+      notific.push(not);
+
+      await updateDoc(userDoc2.ref, { notifications: notific });
     }
     else {
       await updateDoc(listingRef, {
+
         likes: currentLikes - 1,
 
       });
       LikedListing = LikedListing.filter(id => id !== listingId);
+      const not = `${userName} liked your ${listingTitle}`;
 
+      const userQuery = query(collection(db, 'users'), where('uid', '==', listinguserid));
+      const userQuerySnapshot2 = await getDocs(userQuery);
+      const userDoc2 = userQuerySnapshot2.docs[0];
+      const notific = userDoc2.data().notifications || [];
+
+      const updatedNotifications = notific.filter(notification => notification !== not);
+
+      await updateDoc(userDoc2.ref, { notifications: updatedNotifications });
     }
     console.log('Listing title:', listingTitle); // Print the title of the listing
     const not = `${userName} liked your ${listingTitle}`;
@@ -1146,16 +1194,7 @@ app.post('/likeListing', async (req, res) => {
 
 
     // Update the listing owner's notifications
-    console.log(listinguserid);
-    const userQuery = query(collection(db, 'users'), where('uid', '==', listinguserid));
-    // console.log(listinguserid);
-    const userQuerySnapshot2 = await getDocs(userQuery);
-    const userDoc2 = userQuerySnapshot2.docs[0];
-    const notific = userDoc2.data().notifications || [];
 
-    notific.push(not);
-
-    await updateDoc(userDoc2.ref, { notifications: notific });
 
     res.sendStatus(200);
   } catch (error) {
@@ -1322,5 +1361,91 @@ app.get('/get_notifications', async (req, res) => {
   } catch (error) {
     console.log(error);
     res.status(500).send('Failed to fetch notifications list');
+  }
+});
+
+
+
+
+app.post('/block-user', async (req, res) => {
+  try {
+    const { uid } = req.body;
+    console.log('UID:', uid); // Print the UID received from the frontend
+
+    const authId = auth.currentUser.uid;
+    const userQuerySnapshot = await getDocs(query(collection(db, 'users'), where('uid', '==', authId)));
+    if (userQuerySnapshot.empty) {
+      console.error('User document not found');
+      res.sendStatus(404);
+      return;
+    }
+    const userDoc = userQuerySnapshot.docs[0];
+    let blocked_list = userDoc.data().blocked_list || [];
+
+    if (blocked_list.includes(uid))
+    {
+      console.log(uid);
+      blocked_list = blocked_list.filter(id => id !== uid);
+    } else {
+      // Block the user
+      blocked_list.push(uid);
+    }
+
+    const userRef = doc(db, 'users', userDoc.id); // Create a reference to the user document
+    await updateDoc(userRef, { blocked_list: blocked_list }); // Update the blocked_list field with the modified array
+    res.sendStatus(200);
+  } catch (error) {
+    console.error('Error blocking/unblocking user:', error);
+    res.sendStatus(500);
+  }
+});
+
+
+app.get('/check_blocked', async (req, res) => {
+  try {
+    const currentUserUid = getAuth().currentUser.uid;
+
+    const userQuery = query(collection(db, 'users'), where('uid', '==', currentUserUid));
+    const userSnapshot = await getDocs(userQuery);
+    const userDoc = userSnapshot.docs[0];
+
+    const blocked = userDoc.data().blocked_list;
+
+    const blockedQuery = query(collection(db, 'users'), where('uid', 'in', blocked));
+    const blockedSnapshot = await getDocs(blockedQuery);
+
+    const blockList = blockedSnapshot.docs.map((doc) => ({
+      id: doc.data().uid,
+    }));
+
+    res.json(blockList);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send('Failed to fetch following list');
+  }
+});
+
+
+
+app.get('/search_listings', async (req, res) => {
+  const searchTerm = req.query.search;
+  console.log("enter search");
+  console.log(searchTerm);
+
+  try {
+    const querySnapshot = await getDocs(collection(db, 'listings'));
+    const listings = querySnapshot.docs
+      .map((doc) => doc.data())
+      .filter((listing) => {
+        const lowerCaseTitle = listing.title.toLowerCase();
+        const lowerCaseName = listing.name.toLowerCase();
+        const lowerCaseSearchTerm = searchTerm.toLowerCase();
+        return lowerCaseTitle.includes(lowerCaseSearchTerm) || lowerCaseName.includes(lowerCaseSearchTerm);
+      });
+
+    res.json(listings);
+  } catch (error) {
+    console.error('Error retrieving listings:', error);
+    res.status(500).send('An error occurred while retrieving listings');
   }
 });
