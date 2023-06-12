@@ -647,11 +647,21 @@ app.post('/follow', async (req, res) => {
       updatedFollowers.push(currentUserUid);
     }
 
-    const notificationData = {
-      currentUserUid,
-    };
+    const followingUserQuery = query(collection(db, 'users'), where('uid', '==', currentUserUid));
+    const followingUserSnapshot = await getDocs(followingUserQuery);
+    const followingUserDocs = followingUserSnapshot.docs;
+    if (followingUserDocs.length === 0) {
+      res.send('Following user not found');
+      return;
+    }
 
-    updatedNotifications.push(notificationData.currentUserUid);
+    const followingUserDoc = followingUserDocs[0];
+    const followingUserData = followingUserDoc.data();
+    const followingUserName = followingUserData.name; // Assuming the user's name is stored in the 'name' field
+
+    const notificationData = `${followingUserName} started following you`;
+
+    updatedNotifications.push(notificationData);
 
     const updatedFollowedUserData = { ...followedUserData, followers: updatedFollowers, notifications: updatedNotifications };
 
@@ -663,6 +673,7 @@ app.post('/follow', async (req, res) => {
     res.send('Error occurred');
   }
 });
+
 
 
 // show the followers list
@@ -1069,10 +1080,12 @@ app.post('/likeListing', async (req, res) => {
     const listingId = listing.id; // Assuming the listing object has an 'id' field
     // Get the reference to the specific listing document
     const listingRef = doc(db, 'listings', listingId);
+    const listinguserid=listing.userid;
 
     // Get the current likes count from the document
     const listingSnapshot = await getDoc(listingRef);
     const currentLikes = listingSnapshot.data().likes;
+    const listingTitle = listingSnapshot.data().title;
     const authId = auth.currentUser.uid;
     const userQuerySnapshot = await getDocs(query(collection(db, 'users'), where('uid', '==', authId)));
     if (userQuerySnapshot.empty) {
@@ -1081,6 +1094,9 @@ app.post('/likeListing', async (req, res) => {
       return;
     }
     const userDoc = userQuerySnapshot.docs[0];
+    const userName = userDoc.data().name;
+
+    console.log('User name:', userName);
     let LikedListing = userDoc.data().LikedListing || [];
     //console.log('liked:',LikedListing,isLiked);
     if(isLiked)
@@ -1103,8 +1119,27 @@ app.post('/likeListing', async (req, res) => {
       LikedListing = LikedListing.filter(id => id !== listingId);
 
     }
+    console.log('Listing title:', listingTitle); // Print the title of the listing
+    const not = `${userName} liked your ${listingTitle}`;
+    console.log(not);
     const userRef = doc(db, 'users', userDoc.id);
+
+
     await updateDoc(userRef, { LikedListing });
+
+
+    // Update the listing owner's notifications
+    console.log(listinguserid);
+    const userQuery = query(collection(db, 'users'), where('uid', '==', listinguserid));
+    // console.log(listinguserid);
+    const userQuerySnapshot2 = await getDocs(userQuery);
+    const userDoc2 = userQuerySnapshot2.docs[0];
+    const notific = userDoc2.data().notifications || [];
+
+    notific.push(not);
+
+    await updateDoc(userDoc2.ref, { notifications: notific });
+
     res.sendStatus(200);
   } catch (error) {
     console.error('Error updating listing likes:', error);
