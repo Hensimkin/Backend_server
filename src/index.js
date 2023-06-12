@@ -263,6 +263,7 @@ app.post('/post_approve', async (req, res) => {
       followers: [],
       following: [],
       savedListingForLater:[],
+      LikedListing:[],
     };
     try {
       const docRef = await createUserWithEmailAndPassword(auth, user.mail, user.password);
@@ -776,6 +777,35 @@ app.post('/returnSavedListing', async (req, res) => {
   }
 });
 
+app.post('/returnLikedListing', async (req, res) => {
+  try {
+    const authId = auth.currentUser.uid;
+    const userQuerySnapshot = await getDocs(query(collection(db, 'users'), where('uid', '==', authId)));
+
+    if (userQuerySnapshot.empty) {
+      console.error('User document not found');
+      res.sendStatus(404);
+      return;
+    }
+    const userDoc = userQuerySnapshot.docs[0];
+    const likedListingsId = userDoc.data().LikedListing || [];
+    let listings = [];
+    for (const listingId of likedListingsId) {
+      const listingQuerySnapshot = await getDocs(query(collection(db, 'listings'), where('id', '==', listingId)));
+      if (!listingQuerySnapshot.empty) {
+        const listingDoc = listingQuerySnapshot.docs[0];
+        const listingData = listingDoc.data();
+        listings.push(listingData);
+      }
+    }
+
+    res.json(listings);
+  } catch (error) {
+    console.error('Error retrieving saved listings:', error);
+    res.status(500).send('An error occurred while retrieving saved listings');
+  }
+});
+
 
 app.post('/getListingDetails', async (req, res) => {
   try {
@@ -798,42 +828,6 @@ app.post('/getListingDetails', async (req, res) => {
   }
 });
 
-
-app.post('/saveListing', async (req, res) => {
-  try {
-    const { listingId, deleteOrSave } = req.body;
-    console.log(listingId, deleteOrSave);
-
-    const authId = auth.currentUser.uid;
-    const userQuerySnapshot = await getDocs(query(collection(db, 'users'), where('uid', '==', authId)));
-    if (userQuerySnapshot.empty) {
-      console.error('User document not found');
-      res.sendStatus(404);
-      return;
-    }
-    const userDoc = userQuerySnapshot.docs[0];
-
-    // Get the existing saved listings array or create a new one
-    let savedListingForLater = userDoc.data().savedListingForLater || [];
-
-    if (deleteOrSave === 'delete') {
-      // Delete the listingId from the savedListingForLater array
-      savedListingForLater = savedListingForLater.filter(id => id !== listingId);
-    } else if (deleteOrSave === 'save') {
-      // Add the listingId to the savedListingForLater array if it doesn't exist
-      if (!savedListingForLater.includes(listingId)) {
-        savedListingForLater.push(listingId);
-      }
-    }
-
-    const userRef = doc(db, 'users', userDoc.id); // Create a reference to the user document
-    await updateDoc(userRef, { savedListingForLater });
-    res.sendStatus(200);
-  } catch (error) {
-    console.error('Error saving/deleting listing:', error);
-    res.sendStatus(500);
-  }
-});
 
 
 
@@ -1055,28 +1049,81 @@ app.post('/likeListing', async (req, res) => {
     // Get the current likes count from the document
     const listingSnapshot = await getDoc(listingRef);
     const currentLikes = listingSnapshot.data().likes;
-
+    const authId = auth.currentUser.uid;
+    const userQuerySnapshot = await getDocs(query(collection(db, 'users'), where('uid', '==', authId)));
+    if (userQuerySnapshot.empty) {
+      console.error('User document not found');
+      res.sendStatus(404);
+      return;
+    }
+    const userDoc = userQuerySnapshot.docs[0];
+    let LikedListing = userDoc.data().LikedListing || [];
+    //console.log('liked:',LikedListing,isLiked);
     if(isLiked)
     {
       // Update the 'likes' field by adding 1
       await updateDoc(listingRef, {
         likes: currentLikes + 1,
+
       });
+      if (!LikedListing.includes(listingId)) {
+        LikedListing.push(listingId);
+      }
+
     }
     else {
       await updateDoc(listingRef, {
         likes: currentLikes - 1,
+
       });
+      LikedListing = LikedListing.filter(id => id !== listingId);
 
     }
-
-
+    const userRef = doc(db, 'users', userDoc.id);
+    await updateDoc(userRef, { LikedListing });
     res.sendStatus(200);
   } catch (error) {
     console.error('Error updating listing likes:', error);
     res.sendStatus(500);
   }
 });
+
+app.post('/saveListing', async (req, res) => {
+  try {
+    const { listingId, deleteOrSave } = req.body;
+
+    const authId = auth.currentUser.uid;
+    const userQuerySnapshot = await getDocs(query(collection(db, 'users'), where('uid', '==', authId)));
+    if (userQuerySnapshot.empty) {
+      console.error('User document not found');
+      res.sendStatus(404);
+      return;
+    }
+    const userDoc = userQuerySnapshot.docs[0];
+
+    // Get the existing saved listings array or create a new one
+    let savedListingForLater = userDoc.data().savedListingForLater || [];
+
+    if (deleteOrSave === 'delete') {
+      // Delete the listingId from the savedListingForLater array
+      savedListingForLater = savedListingForLater.filter(id => id !== listingId);
+    } else if (deleteOrSave === 'save') {
+      // Add the listingId to the savedListingForLater array if it doesn't exist
+      if (!savedListingForLater.includes(listingId)) {
+        savedListingForLater.push(listingId);
+      }
+    }
+
+    const userRef = doc(db, 'users', userDoc.id); // Create a reference to the user document
+    await updateDoc(userRef, { savedListingForLater });
+    res.sendStatus(200);
+  } catch (error) {
+    console.error('Error saving/deleting listing:', error);
+    res.sendStatus(500);
+  }
+});
+
+
 
 app.get('/listing/:listingId', async (req, res) => {
   const listingId = req.params.listingId;
