@@ -1286,20 +1286,43 @@ app.post('/get_uid', async (req, res) => {
   res.send(user1);
 });
 
-app.post('/get_total_likes', async (req, res) => {
+app.post('/getStatistics', async (req, res) => {
   const userId = getAuth().currentUser.uid;
+
   const listingQuerySnapshot = await getDocs(query(collection(db, 'listings'), where('userid', '==', userId)));
 
+  const userQuery = query(collection(db, 'users'), where('uid', '==', userId));
+  const userSnapshot = await getDocs(userQuery);
+  const userDoc = userSnapshot.docs[0].data(); // Access the user document data
+
   let totalLikes = 0;
+  let counter = 0;
   listingQuerySnapshot.forEach((doc) => {
     const listingData = doc.data();
     if (listingData.likes) {
       totalLikes += listingData.likes;
     }
+    counter += 1;
+
   });
-  console.log('total likes',totalLikes);
-  res.send({totalLikes});
+
+  const totalFollowers = userDoc.followers ? userDoc.followers.length : 0;
+  const totalFollowing = userDoc.following ? userDoc.following.length : 0;
+  const avgLikes = totalLikes /  counter;
+  // console.log('total likes:', totalLikes);
+  // console.log('total followers:', totalFollowers);
+  // console.log('total following:', totalFollowing);
+  // console.log('total avg:', avrgLikes);
+  const stats = {
+    totalLikes: totalLikes,
+    followers: totalFollowers,
+    following: totalFollowing,
+    avgLikes: avgLikes,
+  };
+
+  res.send({ stats });
 });
+
 
 
 // Start the server
