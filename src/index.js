@@ -903,10 +903,16 @@ app.get('/user_listings', async (req, res) => {
 
 app.get('/home_listings', async (req, res) => {
   auth = getAuth();
-  const userId = auth.currentUser.uid; // Assuming you have middleware to authenticate the user and populate `req.user`
+  const currentUserUid = auth.currentUser.uid; // Assuming you have middleware to authenticate the user and populate `req.user`
 
   try {
-    const querySnapshot = await getDocs(query(collection(db, 'listings'), where('userid', '!=', userId)));
+    const userQuery = query(collection(db, 'users'), where('uid', '==', currentUserUid));
+    const userSnapshot = await getDocs(userQuery);
+    const userDoc = userSnapshot.docs[0];
+    const followingUids = userDoc.data().following;
+
+    // Retrieve the listings of the users being followed
+    const querySnapshot = await getDocs(query(collection(db, 'listings'), where('userid', 'in', followingUids)));
     const listings = querySnapshot.docs.map((doc) => doc.data());
 
     res.json(listings);
@@ -915,6 +921,7 @@ app.get('/home_listings', async (req, res) => {
     res.status(500).send('An error occurred while retrieving user listings');
   }
 });
+
 
 app.get('/user_details', async (req, res) => {
   auth = getAuth();
