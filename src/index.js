@@ -1161,7 +1161,7 @@ app.post('/likeListing', async (req, res) => {
       if (!LikedListing.includes(listingId)) {
         LikedListing.push(listingId);
       }
-      const not = `${userName} liked your ${listingTitle}`;
+      const not = `${userName} liked your listing named:${listingTitle}`;
       console.log(not);
       console.log(listinguserid);
       const userQuery = query(collection(db, 'users'), where('uid', '==', listinguserid));
