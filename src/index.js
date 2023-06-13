@@ -681,16 +681,21 @@ app.post('/follow', async (req, res) => {
 
     const notificationData = `${followingUserName} started following you`;
 
-    if (updatedNotifications.length === 4) {
-      updatedNotifications.splice(0, 1); // Remove the notification at 0th position
+
+
+    const blockedList = followedUserData.blocked_list || [];
+    if (!blockedList.includes(currentUserUid)) {
+      if (updatedNotifications.length === 4) {
+        updatedNotifications.splice(0, 1); // Remove the notification at 0th position
+      }
+      updatedNotifications.push(notificationData);
+      const updateNotifUserData={notifications: updatedNotifications};
+      await updateDoc(doc(db, 'users', followedUserDoc.id), updateNotifUserData);
     }
 
-    updatedNotifications.push(notificationData);
 
-    const updatedFollowedUserData = { ...followedUserData, followers: updatedFollowers, notifications: updatedNotifications };
-
+    const updatedFollowedUserData = { ...followedUserData, followers: updatedFollowers };
     await updateDoc(doc(db, 'users', followedUserDoc.id), updatedFollowedUserData);
-
     res.send('Success');
   } catch (error) {
     console.log(error);
@@ -1165,14 +1170,17 @@ app.post('/likeListing', async (req, res) => {
       const userQuerySnapshot2 = await getDocs(userQuery);
       const userDoc2 = userQuerySnapshot2.docs[0];
       const notific = userDoc2.data().notifications || [];
+      const blockedList = userDoc2.data().blocked_list || [];
+      if (!blockedList.includes(authId)) {
+        if (notific.length === 4) {
+          notific.splice(0, 1); // Remove the notification at 0th position
+        }
 
-      if (notific.length === 4) {
-        notific.splice(0, 1); // Remove the notification at 0th position
+        notific.push(not);
+
+        await updateDoc(userDoc2.ref, { notifications: notific });
       }
 
-      notific.push(not);
-
-      await updateDoc(userDoc2.ref, { notifications: notific });
     }
     else {
       await updateDoc(listingRef, {
