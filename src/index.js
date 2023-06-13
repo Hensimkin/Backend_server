@@ -265,6 +265,7 @@ app.post('/post_approve', async (req, res) => {
       savedListingForLater:[],
       LikedListing:[],
       notifications:[],
+      sharedListings:[],
     };
     try {
       const docRef = await createUserWithEmailAndPassword(auth, user.mail, user.password);
@@ -728,7 +729,7 @@ app.get('/followers', async (req, res) => {
     res.json(followersList);
   } catch (error) {
     console.log(error);
-    res.status(500).send('Failed to fetch followers list');
+    res.status(500).send('There is no followers');
   }
 });
 
@@ -755,7 +756,7 @@ app.get('/following', async (req, res) => {
     res.json(followingList);
   } catch (error) {
     console.log(error);
-    res.status(500).send('Failed to fetch following list');
+    res.status(500).send('There is no users you follow');
   }
 });
 
@@ -954,6 +955,35 @@ app.get('/User/:uid', async (req, res) => {
   } catch (error) {
     console.error('Error retrieving user listings:', error);
     res.status(500).send('An error occurred while retrieving user listings');
+  }
+});
+
+app.get('/UserShareListing/:uid', async (req, res) => {
+  try {
+    const { uid } = req.params;
+    const userQuerySnapshot = await getDocs(query(collection(db, 'users'), where('uid', '==', uid)));
+
+    if (userQuerySnapshot.empty) {
+      console.error('User document not found');
+      res.sendStatus(404);
+      return;
+    }
+    const userDoc = userQuerySnapshot.docs[0];
+    const sharedListingsId = userDoc.data().sharedListings || [];
+    let listings = [];
+    for (const listingId of sharedListingsId) {
+      const listingQuerySnapshot = await getDocs(query(collection(db, 'listings'), where('id', '==', listingId)));
+      if (!listingQuerySnapshot.empty) {
+        const listingDoc = listingQuerySnapshot.docs[0];
+        const listingData = listingDoc.data();
+        listings.push(listingData);
+      }
+    }
+
+    res.json(listings);
+  } catch (error) {
+    console.error('Error retrieving saved listings:', error);
+    res.status(500).send('An error occurred while retrieving saved listings');
   }
 });
 
@@ -1255,6 +1285,40 @@ app.post('/saveListing', async (req, res) => {
   }
 });
 
+app.post('/shareListing', async (req, res) => {
+  try {
+    const { listingId, deleteOrSave } = req.body;
+
+    const authId = auth.currentUser.uid;
+    const userQuerySnapshot = await getDocs(query(collection(db, 'users'), where('uid', '==', authId)));
+    if (userQuerySnapshot.empty) {
+      console.error('User document not found');
+      res.sendStatus(404);
+      return;
+    }
+    const userDoc = userQuerySnapshot.docs[0];
+
+    // Get the existing saved listings array or create a new one
+    let sharedListings = userDoc.data().sharedListings || [];
+
+    if (deleteOrSave === 'delete') {
+      // Delete the listingId from the savedListingForLater array
+      sharedListings = sharedListings.filter(id => id !== listingId);
+    } else if (deleteOrSave === 'save') {
+      // Add the listingId to the savedListingForLater array if it doesn't exist
+      if (!sharedListings.includes(listingId)) {
+        sharedListings.push(listingId);
+      }
+    }
+
+    const userRef = doc(db, 'users', userDoc.id); // Create a reference to the user document
+    await updateDoc(userRef, { sharedListings });
+    res.sendStatus(200);
+  } catch (error) {
+    console.error('Error saving/deleting listing:', error);
+    res.sendStatus(500);
+  }
+});
 
 
 app.get('/listing/:listingId', async (req, res) => {
@@ -1460,7 +1524,7 @@ app.get('/check_blocked', async (req, res) => {
     res.json(blockList);
   } catch (error) {
     console.log(error);
-    res.status(500).send('Failed to fetch following list');
+    res.status(500).send('There is no notifications');
   }
 });
 
@@ -1481,10 +1545,53 @@ app.get('/search_listings', async (req, res) => {
         const lowerCaseSearchTerm = searchTerm.toLowerCase();
         return lowerCaseTitle.includes(lowerCaseSearchTerm) || lowerCaseName.includes(lowerCaseSearchTerm);
       });
+    const currentUserUid = auth.currentUser.uid;
+    const userQuery = query(collection(db, 'users'), where('uid', '==', currentUserUid));
+    const userSnapshot = await getDocs(userQuery);
+    const userDocs = userSnapshot.docs;
+    if (userDocs.length === 0) {
+      res.send('User not found');
+      return;
+    }
+    const userDoc = userDocs[0];
+    const userData = userDoc.data();
+    const updatedLast = userData.Last || [];
+    if (searchTerm !== '') {
+      if (!updatedLast.includes(searchTerm)) {
+        if (updatedLast.length === 3) {
+          updatedLast.splice(0, 1);
+        }
+        updatedLast.push(searchTerm);
+      }
+
+      const updatedUserData = {
+        ...userData,
+        Last: updatedLast
+      };
+
+      await updateDoc(doc(db, 'users', userDoc.id), updatedUserData);
+    }
 
     res.json(listings);
   } catch (error) {
     console.error('Error retrieving listings:', error);
     res.status(500).send('An error occurred while retrieving listings');
+  }
+});
+
+app.get('/lastsearches', async (req, res) => {
+  try {
+    const currentUserUid = getAuth().currentUser.uid;
+
+    const userQuery = query(collection(db, 'users'), where('uid', '==', currentUserUid));
+    const userSnapshot = await getDocs(userQuery);
+    const userDoc = userSnapshot.docs[0];
+
+    const lastSearchList = userDoc.data().Last || [];
+    console.log(lastSearchList);
+    res.json(lastSearchList);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send('There is no last searches');
   }
 });
