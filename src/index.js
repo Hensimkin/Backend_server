@@ -264,6 +264,7 @@ app.post('/post_approve', async (req, res) => {
       following: [],
       savedListingForLater:[],
       LikedListing:[],
+      notifications:[],
     };
     try {
       const docRef = await createUserWithEmailAndPassword(auth, user.mail, user.password);
